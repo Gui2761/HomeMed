@@ -1,0 +1,217 @@
+.profile-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  margin-top: 30px;
+  align-items: start;
+}
+
+/* Sidebar Esquerda */
+.profile-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.user-card-main {
+  background: white;
+  border-radius: 16px;
+  padding: 30px 20px;
+  text-align: center;
+  border: 1px solid #eaeaea;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.avatar-container {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #eef3ff;
+}
+
+.avatar-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-card-main h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #1a1a1a;
+}
+
+.user-location {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.profile-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-edit-profile {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-edit-profile:hover {
+  background: #0a3579;
+}
+
+.btn-logout {
+  background: white;
+  color: #e53e3e;
+  border: 1px solid #fed7d7;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-logout:hover {
+  background: #fff5f5;
+}
+
+/* Estatísticas */
+.stats-box {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border: 1px solid #eaeaea;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-item strong {
+  display: block;
+  font-size: 20px;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.stat-item span {
+  font-size: 9px;
+  color: #888;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 30px;
+  background: #eaeaea;
+}
+
+/* Área Direita / Abas */
+.profile-content-area {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #eaeaea;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  min-height: 450px;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-tabs {
+  display: flex;
+  border-bottom: 1px solid #eaeaea;
+  padding: 0 24px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 20px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--primary);
+}
+
+.tab-btn.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.tab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 3px 3px 0 0;
+}
+
+.tab-pane-content {
+  padding: 30px;
+}
+
+.form-grid-mock h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #1a1a1a;
+}
+
+.form-grid-mock p {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: #666;
+}
+
+.mock-box-info {
+  background: #f4f7fc;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  color: #333;
+}
+
+.img-avatar {
+  font-size: 11px;
+  font-weight: bold;
+}
