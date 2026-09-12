@@ -1,168 +1,227 @@
+/* HomeMed - Cadastro Page Styles (Stitch Design System) */
+
 .cadastro-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #f0f4fa 0%, #ffffff 100%);
-  padding: 20px 40px;
+  background-color: var(--bg-app);
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(0, 51, 135, 0.07) 0px, transparent 45%),
+    radial-gradient(at 90% 90%, rgba(13, 148, 136, 0.07) 0px, transparent 45%);
 }
 
 .cadastro-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 20px;
+  padding: 20px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.security-badge {
+.cadastro-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #1a1a1a;
-  font-weight: 500;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.cadastro-brand svg {
+  background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+  color: white;
+  padding: 6px;
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+}
+
+.security-badge-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(13, 148, 136, 0.1);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  color: #0f766e;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .cadastro-main {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: 40px 0;
+  padding: 20px 24px 60px;
 }
 
 .cadastro-card {
   background: #ffffff;
-  padding: 40px 40px 20px;
-  border-radius: 12px 12px 0 0;
-  box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.04);
+  padding: 44px;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 45px -10px rgba(0, 39, 104, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8);
   width: 100%;
-  max-width: 550px; /* Mais largo que o login */
+  max-width: 560px;
 }
 
 .card-header-center {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 28px;
 }
-.subtitle {
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 1px;
+
+.cadastro-icon-wrapper {
+  background: var(--primary-light);
   color: var(--primary);
-  display: block;
-  margin-bottom: 8px;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  box-shadow: var(--shadow-xs);
 }
+
+.cadastro-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--secondary);
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
 .card-header-center h2 {
-  margin: 0 0 10px;
   font-size: 26px;
-  color: #1a1a1a;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
 }
+
 .card-header-center p {
-  margin: 0;
-  font-size: 13px;
-  color: #666;
+  font-size: 14px;
+  color: var(--text-muted);
   line-height: 1.5;
+}
+
+.cadastro-alert-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--danger-light);
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.cadastro-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .form-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 14px;
 }
 
-/* Força da senha */
-.password-strength {
-  margin-bottom: 20px;
-}
-.strength-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
+.cadastro-form .input-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-body);
   margin-bottom: 6px;
-  color: #666;
 }
-.waiting {
-  color: #999;
-}
-.strength-bars {
+
+.cadastro-form .input-box {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  transition: var(--transition);
 }
-.strength-bars .bar {
+
+.cadastro-form .input-box:focus-within {
+  background-color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.cadastro-form .input-icon {
+  color: var(--text-light);
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.cadastro-form .input-box input {
   flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: #eaeaea;
-}
-
-/* Checkbox */
-.checkbox-container {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 24px;
-  cursor: pointer;
-  font-size: 12px;
-  color: #666;
-  line-height: 1.5;
-}
-.checkbox-container a {
-  color: var(--primary);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.btn-google {
-  width: 100%;
-  background-color: #f4f7fc;
-  color: #333;
   border: none;
-  padding: 12px;
-  border-radius: 8px;
+  background: transparent;
+  outline: none;
   font-size: 14px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-  margin-bottom: 20px;
-}
-.btn-google:hover {
-  background-color: #eef3ff;
-}
-
-.cadastro-card-footer {
+  font-weight: 500;
+  color: var(--text-main);
   width: 100%;
-  max-width: 550px;
-  background: #f4f7fc;
-  padding: 16px;
-  border-radius: 0 0 12px 12px;
-  text-align: center;
-  font-size: 12px;
-  color: #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.04);
 }
 
-.cadastro-page-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid #eaeaea;
-  padding-top: 20px;
-  font-size: 12px;
-  color: #666;
+.btn-cadastro-submit {
+  width: 100%;
+  background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+  color: #ffffff;
+  border: none;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 14px rgba(0, 51, 135, 0.25);
+  margin-top: 10px;
 }
-.footer-links-cadastro {
-  display: flex;
-  gap: 20px;
+
+.btn-cadastro-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 51, 135, 0.35);
+  filter: brightness(1.05);
 }
-.footer-links-cadastro a {
-  color: #666;
+
+.cadastro-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.cadastro-footer a {
+  color: var(--primary);
+  font-weight: 700;
   text-decoration: none;
+}
+
+.cadastro-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .cadastro-card {
+    padding: 28px 20px;
+  }
+  .cadastro-header {
+    padding: 16px 20px;
+  }
 }

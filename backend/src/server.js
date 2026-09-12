@@ -2,7 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { pool } from './config/database.js';
-import usuarioRoutes from './routes/usuarioRoutes.js'; // <-- 1. Importando as rotas
+import usuarioRoutes from './routes/usuarioRoutes.js';
+import profissionalRoutes from './routes/profissionalRoutes.js';
+import pacienteRoutes from './routes/pacienteRoutes.js';
+import conversaRoutes from './routes/conversaRoutes.js';
+import agendamentoRoutes from './routes/agendamentoRoutes.js';
+import avaliacaoRoutes from './routes/avaliacaoRoutes.js';
 
 dotenv.config();
 
@@ -20,16 +25,21 @@ app.get('/api/status', (req, res) => {
 // Rota de teste para checar o banco de dados
 app.get('/api/test-db', async (req, res) => {
   try {
-    const result = await pool.query('SELECT NOW()');
-    res.json({ message: 'Banco de dados conectado!', time: result.rows[0].now });
+    const result = await pool.query("SELECT datetime('now') as now");
+    res.json({ message: 'Banco de dados conectado!', time: result.rows[0]?.now });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao conectar com o banco de dados' });
   }
 });
 
-// Registrando as rotas da entidade Usuario
-app.use('/api', usuarioRoutes); // <-- 2. Dizendo ao Express para usar as rotas
+// Registrando todas as rotas da API
+app.use('/api', usuarioRoutes);
+app.use('/api', profissionalRoutes);
+app.use('/api', pacienteRoutes);
+app.use('/api', conversaRoutes);
+app.use('/api', agendamentoRoutes);
+app.use('/api', avaliacaoRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);

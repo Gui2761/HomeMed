@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 export const usuarioController = {
   async cadastrar(req, res) {
     try {
-      const { email, senha, nome, telefone, tipo_usuario } = req.body;
+      const { email, senha, nome, telefone, tipo_usuario, cpf, registro_profissional, especialidade_principal, bio, preco_base } = req.body;
 
       if (!email || !senha || !nome || !tipo_usuario) {
         return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
@@ -20,7 +20,12 @@ export const usuarioController = {
         senha_hash,
         nome,
         telefone,
-        tipo_usuario
+        tipo_usuario,
+        cpf,
+        registro_profissional,
+        especialidade_principal,
+        bio,
+        preco_base
       });
 
       return res.status(201).json({
