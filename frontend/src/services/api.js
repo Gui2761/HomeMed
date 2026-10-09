@@ -29,6 +29,15 @@ export const api = {
     return response.json();
   },
 
+  async redefinirSenha(dados) {
+    const response = await fetch(`${API_URL}/redefinir-senha`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+    });
+    return response.json();
+  },
+
   // Profissionais & Busca (Home)
   async listarProfissionais({ termo, especialidade, localizacao, apenasDisponiveis } = {}) {
     const params = new URLSearchParams();

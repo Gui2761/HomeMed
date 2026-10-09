@@ -4,11 +4,13 @@ import crypto from 'crypto';
 export const usuarioService = {
   async criarUsuario({ email, senha_hash, nome, telefone, tipo_usuario, cpf, registro_profissional, especialidade_principal, bio, preco_base }) {
     const id = crypto.randomUUID();
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+
     const queryUsuario = `
       INSERT INTO usuarios (id, email, senha_hash, nome, telefone, tipo_usuario)
       VALUES ($1, $2, $3, $4, $5, $6);
     `;
-    await pool.query(queryUsuario, [id, email, senha_hash, nome, telefone, tipo_usuario]);
+    await pool.query(queryUsuario, [id, cleanEmail, senha_hash, nome, telefone, tipo_usuario]);
 
     // Se for paciente, cria registro correspondente na tabela pacientes
     if (tipo_usuario === 'paciente') {
@@ -40,7 +42,7 @@ export const usuarioService = {
 
     return {
       id,
-      email,
+      email: cleanEmail,
       nome,
       telefone,
       tipo_usuario
@@ -48,8 +50,19 @@ export const usuarioService = {
   },
 
   async buscarPorEmail(email) {
-    const query = `SELECT * FROM usuarios WHERE email = $1;`;
-    const result = await pool.query(query, [email]);
+    if (!email) return null;
+    const cleanEmail = email.trim().toLowerCase();
+    const withoutCom = cleanEmail.replace(/\.com$/, '');
+    const withCom = cleanEmail.endsWith('.com') ? cleanEmail : `${cleanEmail}.com`;
+
+    const query = `
+      SELECT * FROM usuarios 
+      WHERE LOWER(TRIM(email)) = $1 
+         OR LOWER(TRIM(email)) = $2 
+         OR LOWER(TRIM(email)) = $3
+      LIMIT 1;
+    `;
+    const result = await pool.query(query, [cleanEmail, withoutCom, withCom]);
     return result.rows[0];
   },
 

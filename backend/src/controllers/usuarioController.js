@@ -1,6 +1,7 @@
 import { usuarioService } from '../services/usuarioService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { pool } from '../config/database.js';
 
 export const usuarioController = {
   async cadastrar(req, res) {
@@ -11,7 +12,7 @@ export const usuarioController = {
         return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
       }
 
-      // Criptografando a senha com bcrypt
+      // Criptografando a senha com bcryptjs
       const saltRounds = 10;
       const senha_hash = await bcrypt.hash(senha, saltRounds);
 
@@ -83,6 +84,35 @@ export const usuarioController = {
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Erro interno no servidor ao fazer login.', details: err.message });
+    }
+  },
+
+  async redefinirSenha(req, res) {
+    try {
+      const { email, novaSenha } = req.body;
+
+      if (!email || !novaSenha) {
+        return res.status(400).json({ error: 'Informe seu e-mail e a nova senha.' });
+      }
+
+      if (novaSenha.length < 6) {
+        return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres.' });
+      }
+
+      const usuario = await usuarioService.buscarPorEmail(email);
+      if (!usuario) {
+        return res.status(404).json({ error: 'Nenhum usuário cadastrado com este e-mail.' });
+      }
+
+      const senha_hash = await bcrypt.hash(novaSenha, 10);
+      await pool.query('UPDATE usuarios SET senha_hash = $1 WHERE id = $2', [senha_hash, usuario.id]);
+
+      return res.status(200).json({ 
+        message: 'Senha atualizada com sucesso! Você já pode fazer login com sua nova senha.' 
+      });
+    } catch (err) {
+      console.error('[ERRO REDEFINIR SENHA]', err);
+      return res.status(500).json({ error: 'Erro ao atualizar senha.', details: err.message });
     }
   },
 

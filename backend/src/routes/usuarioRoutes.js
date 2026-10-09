@@ -7,6 +7,7 @@ const router = Router();
 // Rotas públicas
 router.post('/usuarios', usuarioController.cadastrar);
 router.post('/login', usuarioController.login);
+router.post('/redefinir-senha', usuarioController.redefinirSenha);
 
 // Rota protegida pelo middleware
 router.get('/usuarios', verificarAutenticacao, usuarioController.listar);

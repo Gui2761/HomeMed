@@ -11,6 +11,14 @@ export default function Login() {
 
   const [formData, setFormData] = useState({ email: '', senha: '' });
 
+  // Estado para recuperação/redefinição de senha
+  const [modalEsqueciSenha, setModalEsqueciSenha] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetNovaSenha, setResetNovaSenha] = useState('');
+  const [resetMsg, setResetMsg] = useState('');
+  const [resetErro, setResetErro] = useState('');
+  const [resetCarregando, setResetCarregando] = useState(false);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (erro) setErro('');
@@ -36,6 +44,31 @@ export default function Login() {
       setErro('Erro ao conectar com o servidor. Verifique sua conexão com a internet.');
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const handleRedefinirSenha = async (e) => {
+    e.preventDefault();
+    setResetCarregando(true);
+    setResetErro('');
+    setResetMsg('');
+
+    try {
+      const res = await api.redefinirSenha({ email: resetEmail, novaSenha: resetNovaSenha });
+      if (res.error) {
+        setResetErro(res.error);
+      } else {
+        setResetMsg(res.message || 'Senha atualizada com sucesso!');
+        setFormData({ ...formData, email: resetEmail, senha: resetNovaSenha });
+        setTimeout(() => {
+          setModalEsqueciSenha(false);
+          setResetMsg('');
+        }, 2200);
+      }
+    } catch (err) {
+      setResetErro('Erro ao redefinir senha. Tente novamente.');
+    } finally {
+      setResetCarregando(false);
     }
   };
 
@@ -79,9 +112,17 @@ export default function Login() {
           <div className="input-field-group">
             <div className="label-row">
               <label>Sua Senha</label>
-              <Link to="/cadastro" className="link-forgot">
+              <button 
+                type="button" 
+                className="link-forgot"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onClick={() => {
+                  setResetEmail(formData.email || '');
+                  setModalEsqueciSenha(true);
+                }}
+              >
                 Esqueceu a senha?
-              </Link>
+              </button>
             </div>
             <div className="input-box">
               <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -130,6 +171,98 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {/* Modal Redefinir Senha */}
+      {modalEsqueciSenha && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            padding: '28px',
+            maxWidth: '420px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px', color: '#0f172a' }}>
+              Redefinir Senha
+            </h3>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '18px' }}>
+              Informe seu e-mail cadastrado e digite a nova senha desejada.
+            </p>
+
+            {resetErro && (
+              <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' }}>
+                {resetErro}
+              </div>
+            )}
+
+            {resetMsg && (
+              <div style={{ background: '#dcfce7', color: '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' }}>
+                {resetMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleRedefinirSenha}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                  E-mail cadastrado
+                </label>
+                <input 
+                  type="email" 
+                  value={resetEmail} 
+                  onChange={(e) => setResetEmail(e.target.value)} 
+                  placeholder="seu.email@dominio.com"
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                  Nova Senha (mínimo 6 caracteres)
+                </label>
+                <input 
+                  type="password" 
+                  value={resetNovaSenha} 
+                  onChange={(e) => setResetNovaSenha(e.target.value)} 
+                  placeholder="••••••••"
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setModalEsqueciSenha(false)}
+                  style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={resetCarregando}
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', background: '#0284c7', color: '#ffffff', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  {resetCarregando ? 'Salvando...' : 'Salvar Nova Senha'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
