@@ -29,3 +29,4 @@ dist-ssr
 *.sqlite-wal
 .env
 .env.local
+.vercel

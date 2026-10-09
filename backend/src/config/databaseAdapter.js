@@ -19,16 +19,20 @@ const connStr = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
 if (connStr) {
   const isLocal = connStr.includes('localhost') || connStr.includes('127.0.0.1');
-  try {
-    pgPool = new Pool({
-      connectionString: connStr,
-      ssl: isLocal ? false : { rejectUnauthorized: false },
-      connectionTimeoutMillis: 5000
-    });
-    isPostgres = true;
-    console.log('[DB] PostgreSQL detectado. Modo de produção ativado.');
-  } catch (err) {
-    console.warn('[DB] Erro ao criar pool do PostgreSQL:', err.message);
+  if (process.env.VERCEL && isLocal) {
+    console.warn('[DB] DATABASE_URL aponta para localhost dentro da Vercel. Aguardando conexão com banco em nuvem (Vercel Postgres/Neon).');
+  } else {
+    try {
+      pgPool = new Pool({
+        connectionString: connStr,
+        ssl: isLocal ? false : { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000
+      });
+      isPostgres = true;
+      console.log('[DB] PostgreSQL detectado. Modo de produção ativado.');
+    } catch (err) {
+      console.warn('[DB] Erro ao criar pool do PostgreSQL:', err.message);
+    }
   }
 }
 

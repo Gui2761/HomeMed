@@ -25,14 +25,16 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
-// Rota de status da API
-app.get('/api/status', (req, res) => {
+// Rota de status da API (com e sem prefixo /api)
+const statusHandler = (req, res) => {
   res.json({
     status: 'online',
     message: 'API do HomeMed operacional! 🚀',
     database_mode: isPostgres ? 'PostgreSQL (Cloud/Vercel/Neon)' : 'SQLite (Local)'
   });
-});
+};
+app.get('/api/status', statusHandler);
+app.get('/status', statusHandler);
 
 // Rota de teste e verificação de banco de dados
 app.get('/api/test-db', async (req, res) => {
