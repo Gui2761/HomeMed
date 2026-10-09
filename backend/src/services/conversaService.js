@@ -19,11 +19,11 @@ export const conversaService = {
           c.ultima_mensagem_em,
           uPac.id as interlocutor_usuario_id,
           uPac.nome as interlocutor_nome,
-          pPac.foto_url as interlocutor_foto,
+          COALESCE(uPac.foto_url, pPac.foto_url, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150&h=150') as interlocutor_foto,
           'Paciente' as interlocutor_especialidade,
           (SELECT conteudo FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem,
           (SELECT enviado_em FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem_data,
-          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND (lida = false OR lida = 0)) as nao_lidas
+          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND NOT lida) as nao_lidas
         FROM conversas c
         JOIN profissionais pro ON pro.id = c.profissional_id
         JOIN pacientes pPac ON pPac.id = c.paciente_id
@@ -42,14 +42,14 @@ export const conversaService = {
           c.ultima_mensagem_em,
           uPro.id as interlocutor_usuario_id,
           uPro.nome as interlocutor_nome,
-          'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150&h=150' as interlocutor_foto,
+          COALESCE(uPro.foto_url, 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=150&h=150') as interlocutor_foto,
           pro.especialidade_principal as interlocutor_especialidade,
           pro.preco_base,
           pro.unidade_cobranca,
           pro.nota_media,
           (SELECT conteudo FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem,
           (SELECT enviado_em FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem_data,
-          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND (lida = false OR lida = 0)) as nao_lidas
+          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND NOT lida) as nao_lidas
         FROM conversas c
         JOIN pacientes pac ON pac.id = c.paciente_id
         JOIN profissionais pro ON pro.id = c.profissional_id
@@ -100,7 +100,7 @@ export const conversaService = {
       INSERT INTO mensagens (id, conversa_id, remetente_id, conteudo, tipo_mensagem, metadados_servico, lida, enviado_em)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `;
-    await pool.query(sql, [id, conversaId, remetenteId, conteudo, tipo_mensagem, metadadosStr, 0, agora]);
+    await pool.query(sql, [id, conversaId, remetenteId, conteudo, tipo_mensagem, metadadosStr, false, agora]);
 
     // Atualiza conversa
     await pool.query('UPDATE conversas SET ultima_mensagem_em = $1 WHERE id = $2', [agora, conversaId]);
@@ -112,7 +112,7 @@ export const conversaService = {
       conteudo,
       tipo_mensagem,
       metadados_servico: metadados_servico,
-      lida: 0,
+      lida: false,
       enviado_em: agora
     };
   },
