@@ -48,7 +48,9 @@ export const agendamentoService = {
 
     if (statusFiltro && statusFiltro !== 'todas') {
       if (statusFiltro === 'proximas') {
-        sql += ` AND a.status IN ('pendente', 'confirmado') AND a.data_hora_visita >= datetime('now', '-1 day')`;
+        const ontem = new Date(Date.now() - 86400000).toISOString();
+        params.push(ontem);
+        sql += ` AND a.status IN ('pendente', 'confirmado') AND a.data_hora_visita >= $${params.length}`;
       } else if (statusFiltro === 'em_andamento') {
         sql += ` AND a.status = 'confirmado'`;
       } else if (statusFiltro === 'concluidas') {
