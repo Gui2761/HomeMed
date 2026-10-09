@@ -166,10 +166,10 @@ export default function Login() {
 
         {/* Brand Icon & Header */}
         <div className="login-header">
-          <div className="brand-badge-icon" style={{ background: portalAtivo === 'medico' ? 'rgba(5, 150, 105, 0.1)' : 'rgba(2, 132, 199, 0.1)', color: getThemeColor() }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
+          <div className="brand-badge-icon" style={{ background: 'transparent', padding: 0 }}>
+            <img src="/favicon.svg" alt="HomeMed" width="36" height="36" style={{ borderRadius: '10px', boxShadow: '0 2px 6px rgba(0,0,0,0.12)' }} />
           </div>
-          <div className="brand-name">HomeMed</div>
+          <div className="brand-name" style={{ color: getThemeColor() }}>HomeMed</div>
           
           <h2 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>
             {portalAtivo === 'medico' ? 'Portal do Especialista' : portalAtivo === 'admin' ? 'Governança & Admin' : 'Portal do Paciente'}

@@ -485,14 +485,13 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer className="footer-main">
-        <div className="logo-small">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
-          HomeMed Saúde Digital
+        <div className="logo-small" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/favicon.svg" alt="HomeMed" width="20" height="20" style={{ borderRadius: '5px' }} />
+          <strong>HomeMed Saúde Digital</strong>
         </div>
         <div className="footer-links">
           <span>© 2026 HomeMed • Plataforma Certificada de Saúde Domiciliar</span>
-          <a href="#">Termos de Uso</a>
-          <a href="#">Privacidade & LGPD</a>
+          <Link to="/termos">Termos de Acordo & Privacidade</Link>
         </div>
       </footer>
     </div>

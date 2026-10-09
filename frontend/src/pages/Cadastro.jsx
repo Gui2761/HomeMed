@@ -191,8 +191,8 @@ export default function Cadastro() {
     <div className="cadastro-page">
       {/* Top Header */}
       <header className="cadastro-header">
-        <Link to="/" className="cadastro-brand" style={{ textDecoration: 'none' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
+        <Link to="/" className="cadastro-brand" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '9px' }}>
+          <img src="/favicon.svg" alt="HomeMed Logo" width="30" height="30" style={{ borderRadius: '7px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
           <strong>HomeMed</strong>
         </Link>
         <div className="security-badge-top">
@@ -686,9 +686,22 @@ export default function Cadastro() {
                   style={{ marginTop: '3px' }}
                 />
                 <span>
-                  {tipoUsuario === 'paciente'
-                    ? 'Declaro que li e concordo com os Termos de Serviço do HomeMed e autorizo o tratamento de dados cadastrais conforme as diretrizes da LGPD em Saúde.'
-                    : 'Declaro sob responsabilidade legal e ética que possuo registro ativo e regular junto ao respectivo Conselho de Classe, concordando com o Código de Conduta Profissional HomeMed.'}
+                  {tipoUsuario === 'paciente' ? (
+                    <>
+                      Declaro que li e concordo com os{' '}
+                      <Link to="/termos" target="_blank" style={{ color: '#0284c7', fontWeight: '700', textDecoration: 'underline' }}>
+                        Termos de Acordo e Privacidade do HomeMed
+                      </Link>{' '}
+                      e autorizo o tratamento de dados cadastrais conforme as diretrizes da LGPD em Saúde.
+                    </>
+                  ) : (
+                    <>
+                      Declaro sob responsabilidade legal e ética que possuo registro ativo e regular junto ao respectivo Conselho de Classe, concordando com os{' '}
+                      <Link to="/termos" target="_blank" style={{ color: '#059669', fontWeight: '700', textDecoration: 'underline' }}>
+                        Termos de Acordo Profissional HomeMed
+                      </Link>.
+                    </>
+                  )}
                 </span>
               </label>
             </div>

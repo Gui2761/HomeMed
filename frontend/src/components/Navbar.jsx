@@ -27,9 +27,9 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to="/home" className="logo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
-        <strong>HomeMed</strong>
+      <Link to="/home" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '9px', textDecoration: 'none' }}>
+        <img src="/favicon.svg" alt="HomeMed Logo" width="28" height="28" style={{ borderRadius: '7px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+        <strong style={{ fontSize: '18px', fontWeight: '800', color: '#0284c7' }}>HomeMed</strong>
       </Link>
 
       <div className="nav-links">

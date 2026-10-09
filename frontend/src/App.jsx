@@ -9,6 +9,7 @@ import Cadastro from './pages/Cadastro';
 import DetalhesAgendamento from './pages/DetalhesAgendamento';
 import Credenciamento from './pages/Credenciamento';
 import AdminAuditoria from './pages/AdminAuditoria';
+import Termos from './pages/Termos';
 import './App.css';
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/credenciamento" element={<Credenciamento />} />
           <Route path="/admin" element={<AdminAuditoria />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/termos" element={<Termos />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
