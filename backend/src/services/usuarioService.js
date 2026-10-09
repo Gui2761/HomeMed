@@ -219,9 +219,19 @@ export const usuarioService = {
           SET senha_hash = $1, 
               nome = $2, 
               telefone = $3,
-              foto_url = COALESCE(foto_url, $4)
+              foto_url = COALESCE(NULLIF(TRIM(foto_url), ''), $4)
           WHERE id = $5
         `, [senha_hash, p.nome, p.telefone, p.foto_url, existe.id]);
+
+        if (p.tipo_usuario === 'paciente') {
+          try {
+            await pool.query(`
+              UPDATE pacientes 
+              SET foto_url = COALESCE(NULLIF(TRIM(foto_url), ''), $1) 
+              WHERE usuario_id = $2
+            `, [p.foto_url, existe.id]);
+          } catch (e) {}
+        }
 
         if (p.tipo_usuario === 'profissional') {
           await pool.query(`
