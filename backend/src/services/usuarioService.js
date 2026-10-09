@@ -34,7 +34,7 @@ export const usuarioService = {
         bio || 'Profissional de saúde dedicado ao atendimento humanizado.',
         preco_base || 150.00,
         'hora',
-        0
+        false
       ]);
     }
 

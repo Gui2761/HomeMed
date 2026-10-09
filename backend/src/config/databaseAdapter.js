@@ -14,27 +14,40 @@ let pgPool = null;
 let sqliteDb = null;
 let dbInitialized = false;
 
-// 1. Detecta configuração de PostgreSQL (Vercel Postgres / Neon / Supabase / Local)
-const connStr = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+// 1. Obtém Pool do PostgreSQL dinamicamente
+export function getPgPool() {
+  if (pgPool) return pgPool;
 
-if (connStr) {
-  const isLocal = connStr.includes('localhost') || connStr.includes('127.0.0.1');
-  if (process.env.VERCEL && isLocal) {
-    console.warn('[DB] DATABASE_URL aponta para localhost dentro da Vercel. Aguardando conexão com banco em nuvem (Vercel Postgres/Neon).');
-  } else {
+  const connStr = 
+    process.env.POSTGRES_URL || 
+    process.env.DATABASE_URL || 
+    process.env.POSTGRES_URL_NON_POOLING || 
+    process.env.POSTGRES_PRISMA_URL;
+
+  if (connStr) {
+    const isLocal = connStr.includes('localhost') || connStr.includes('127.0.0.1');
+    if (process.env.VERCEL && isLocal) {
+      console.warn('[DB] DATABASE_URL aponta para localhost dentro da Vercel. Aguardando conexão do Vercel Postgres/Neon.');
+      return null;
+    }
+
     try {
       pgPool = new Pool({
         connectionString: connStr,
         ssl: isLocal ? false : { rejectUnauthorized: false },
-        connectionTimeoutMillis: 5000
+        connectionTimeoutMillis: 6000
       });
       isPostgres = true;
-      console.log('[DB] PostgreSQL detectado. Modo de produção ativado.');
+      console.log('[DB] PostgreSQL/Neon conectado com sucesso.');
     } catch (err) {
       console.warn('[DB] Erro ao criar pool do PostgreSQL:', err.message);
     }
   }
+  return pgPool;
 }
+
+// Inicializa pool se possível
+getPgPool();
 
 // 2. Se não estiver em ambiente Vercel serverless restrito, inicializa SQLite para desenvolvimento local offline
 if (!process.env.VERCEL) {
@@ -53,16 +66,18 @@ if (!process.env.VERCEL) {
 
 // 3. Schema DDL para PostgreSQL
 async function initPostgresSchema() {
-  if (!pgPool) return;
+  const poolInstance = getPgPool();
+  if (!poolInstance) return;
+
   try {
     try {
-      await pgPool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+      await poolInstance.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
     } catch (e) {
       // Ignora caso superuser não esteja disponível na nuvem
     }
 
-    await pgPool.query(`
-      CREATE TABLE IF NOT EXISTS usuarios (
+    const tables = [
+      `CREATE TABLE IF NOT EXISTS usuarios (
         id UUID PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         senha_hash VARCHAR(255) NOT NULL,
@@ -70,16 +85,14 @@ async function initPostgresSchema() {
         telefone VARCHAR(50),
         tipo_usuario VARCHAR(50) NOT NULL CHECK (tipo_usuario IN ('paciente', 'profissional', 'admin')),
         criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS pacientes (
+      )`,
+      `CREATE TABLE IF NOT EXISTS pacientes (
         id UUID PRIMARY KEY,
         usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
         cpf VARCHAR(20) UNIQUE NOT NULL,
         foto_url TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS profissionais (
+      )`,
+      `CREATE TABLE IF NOT EXISTS profissionais (
         id UUID PRIMARY KEY,
         usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
         registro_profissional VARCHAR(50) NOT NULL,
@@ -90,9 +103,8 @@ async function initPostgresSchema() {
         nota_media NUMERIC(3,2) DEFAULT 0.0,
         verificado BOOLEAN DEFAULT FALSE,
         disponivel_hoje BOOLEAN DEFAULT FALSE
-      );
-
-      CREATE TABLE IF NOT EXISTS enderecos (
+      )`,
+      `CREATE TABLE IF NOT EXISTS enderecos (
         id UUID PRIMARY KEY,
         paciente_id UUID NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
         logradouro VARCHAR(255) NOT NULL,
@@ -103,16 +115,14 @@ async function initPostgresSchema() {
         uf VARCHAR(2) NOT NULL,
         cep VARCHAR(20) NOT NULL,
         padrao BOOLEAN DEFAULT FALSE
-      );
-
-      CREATE TABLE IF NOT EXISTS conversas (
+      )`,
+      `CREATE TABLE IF NOT EXISTS conversas (
         id UUID PRIMARY KEY,
         paciente_id UUID NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
         profissional_id UUID NOT NULL REFERENCES profissionais(id) ON DELETE CASCADE,
         ultima_mensagem_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS mensagens (
+      )`,
+      `CREATE TABLE IF NOT EXISTS mensagens (
         id UUID PRIMARY KEY,
         conversa_id UUID NOT NULL REFERENCES conversas(id) ON DELETE CASCADE,
         remetente_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -122,9 +132,8 @@ async function initPostgresSchema() {
         anexo_url TEXT,
         lida BOOLEAN DEFAULT FALSE,
         enviado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS agendamentos (
+      )`,
+      `CREATE TABLE IF NOT EXISTS agendamentos (
         id UUID PRIMARY KEY,
         paciente_id UUID NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
         profissional_id UUID NOT NULL REFERENCES profissionais(id) ON DELETE CASCADE,
@@ -132,19 +141,24 @@ async function initPostgresSchema() {
         data_hora_visita TIMESTAMP NOT NULL,
         valor_total DECIMAL(10,2) NOT NULL,
         status VARCHAR(50) DEFAULT 'pendente' CHECK (status IN ('pendente', 'confirmado', 'concluido', 'cancelado'))
-      );
-
-      CREATE TABLE IF NOT EXISTS avaliacoes (
+      )`,
+      `CREATE TABLE IF NOT EXISTS avaliacoes (
         id UUID PRIMARY KEY,
         agendamento_id UUID NOT NULL REFERENCES agendamentos(id) ON DELETE CASCADE,
         nota INTEGER CHECK (nota >= 1 AND nota <= 5),
         comentario TEXT
-      );
-    `);
+      )`
+    ];
+
+    for (const ddl of tables) {
+      await poolInstance.query(ddl);
+    }
 
     console.log('[DB-PG] Schema do PostgreSQL verificado com sucesso.');
+    dbInitialized = true;
   } catch (err) {
     console.error('[DB-PG] Erro ao inicializar schema do PostgreSQL:', err.message);
+    throw err;
   }
 }
 
@@ -238,20 +252,21 @@ function initSqliteSchema() {
 // Inicialização sob demanda ou na carga
 export async function ensureDbInitialized() {
   if (dbInitialized) return;
-  if (isPostgres && pgPool) {
+  const poolInstance = getPgPool();
+  if (poolInstance) {
     await initPostgresSchema();
   }
-  dbInitialized = true;
 }
 
 // Dispara inicialização em background
 ensureDbInitialized().catch(err => console.warn('[DB] Init background aviso:', err.message));
 
 export async function query(sql, params = []) {
-  if (isPostgres && pgPool) {
+  const poolInstance = getPgPool();
+  if (poolInstance) {
     try {
       await ensureDbInitialized();
-      return await pgPool.query(sql, params);
+      return await poolInstance.query(sql, params);
     } catch (err) {
       console.warn('[DB] Falha na consulta PostgreSQL:', err.message);
       if (!sqliteDb) {
@@ -261,7 +276,7 @@ export async function query(sql, params = []) {
   }
 
   if (!sqliteDb) {
-    throw new Error('Nenhum banco de dados disponível (PostgreSQL desconectado e SQLite não disponível no ambiente).');
+    throw new Error('Nenhum banco de dados configurado no ambiente de nuvem. Conecte o Vercel Postgres/Neon no dashboard.');
   }
 
   // Mapeia parâmetros numerados ($1, $2, etc.) para '?' no SQLite

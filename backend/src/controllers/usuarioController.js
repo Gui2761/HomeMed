@@ -33,11 +33,14 @@ export const usuarioController = {
         usuario: novoUsuario
       });
     } catch (err) {
-      console.error(err);
-      if (err.code === '23505') {
-        return res.status(400).json({ error: 'Este e-mail já está cadastrado.' });
+      console.error('[ERRO CADASTRO]', err);
+      if (err.code === '23505' || err.message?.includes('UNIQUE constraint')) {
+        return res.status(400).json({ error: 'Este e-mail ou CPF já está cadastrado.' });
       }
-      return res.status(500).json({ error: 'Erro interno no servidor ao cadastrar usuário.' });
+      return res.status(500).json({ 
+        error: 'Erro interno no servidor ao cadastrar usuário.', 
+        details: err.message 
+      });
     }
   },
 
@@ -79,7 +82,7 @@ export const usuarioController = {
       });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: 'Erro interno no servidor ao fazer login.' });
+      return res.status(500).json({ error: 'Erro interno no servidor ao fazer login.', details: err.message });
     }
   },
 
@@ -89,7 +92,7 @@ export const usuarioController = {
       return res.status(200).json(usuarios);
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: 'Erro ao buscar usuários.' });
+      return res.status(500).json({ error: 'Erro ao buscar usuários.', details: err.message });
     }
   }
 };
