@@ -82,7 +82,7 @@ export const pacienteService = {
 
     // Se marcado como padrão, desmarca outros
     if (padrao) {
-      await pool.query('UPDATE enderecos SET padrao = 0 WHERE paciente_id = $1', [pacId]);
+      await pool.query('UPDATE enderecos SET padrao = false WHERE paciente_id = $1', [pacId]);
     }
 
     // Verifica se já tem endereço

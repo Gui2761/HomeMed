@@ -11,7 +11,8 @@ export const verificarAutenticacao = (req, res, next) => {
   const [, token] = authHeader.split(' ');
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'seredo_super_secreto');
+    const jwtSecret = process.env.JWT_SECRET || 'homemed_default_jwt_secret_dev_key_2026';
+    const decoded = jwt.verify(token, jwtSecret);
     
     // Injeta os dados do usuário na requisição para uso posterior
     req.usuarioId = decoded.id;

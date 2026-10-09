@@ -23,7 +23,7 @@ export const conversaService = {
           'Paciente' as interlocutor_especialidade,
           (SELECT conteudo FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem,
           (SELECT enviado_em FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem_data,
-          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND lida = 0) as nao_lidas
+          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND (lida = false OR lida = 0)) as nao_lidas
         FROM conversas c
         JOIN profissionais pro ON pro.id = c.profissional_id
         JOIN pacientes pPac ON pPac.id = c.paciente_id
@@ -49,7 +49,7 @@ export const conversaService = {
           pro.nota_media,
           (SELECT conteudo FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem,
           (SELECT enviado_em FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem_data,
-          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND lida = 0) as nao_lidas
+          (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND (lida = false OR lida = 0)) as nao_lidas
         FROM conversas c
         JOIN pacientes pac ON pac.id = c.paciente_id
         JOIN profissionais pro ON pro.id = c.profissional_id

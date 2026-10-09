@@ -34,7 +34,7 @@ export const profissionalService = {
     }
 
     if (apenasDisponiveis) {
-      sql += ` AND p.disponivel_hoje = 1`;
+      sql += ` AND (p.disponivel_hoje = true OR p.disponivel_hoje = 1)`;
     }
 
     sql += ` ORDER BY p.nota_media DESC, p.verificado DESC`;

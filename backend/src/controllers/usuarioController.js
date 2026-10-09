@@ -60,10 +60,10 @@ export const usuarioController = {
         return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
       }
 
-      // Gera o Token JWT válido por 7 dias
+      const jwtSecret = process.env.JWT_SECRET || 'homemed_default_jwt_secret_dev_key_2026';
       const token = jwt.sign(
         { id: usuario.id, tipo_usuario: usuario.tipo_usuario },
-        process.env.JWT_SECRET || 'seredo_super_secreto',
+        jwtSecret,
         { expiresIn: '7d' }
       );
 
