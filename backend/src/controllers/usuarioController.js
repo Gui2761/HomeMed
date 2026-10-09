@@ -6,7 +6,20 @@ import { pool } from '../config/database.js';
 export const usuarioController = {
   async cadastrar(req, res) {
     try {
-      const { email, senha, nome, telefone, tipo_usuario, cpf, registro_profissional, especialidade_principal, bio, preco_base } = req.body;
+      const { 
+        email, 
+        senha, 
+        nome, 
+        telefone, 
+        tipo_usuario, 
+        cpf, 
+        registro_profissional, 
+        especialidade_principal, 
+        bio, 
+        preco_base,
+        unidade_cobranca,
+        endereco
+      } = req.body;
 
       if (!email || !senha || !nome || !tipo_usuario) {
         return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
@@ -26,7 +39,9 @@ export const usuarioController = {
         registro_profissional,
         especialidade_principal,
         bio,
-        preco_base
+        preco_base,
+        unidade_cobranca,
+        endereco
       });
 
       return res.status(201).json({

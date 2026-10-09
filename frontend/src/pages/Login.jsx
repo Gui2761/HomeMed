@@ -1,13 +1,19 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import './Login.css';
 
 export default function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const queryParams = new URLSearchParams(location.search);
+  const initialPortal = queryParams.get('portal') === 'medico' ? 'medico' : (queryParams.get('portal') === 'admin' ? 'admin' : 'paciente');
+
+  const [portalAtivo, setPortalAtivo] = useState(initialPortal);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
-  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({ email: '', senha: '' });
 
@@ -19,6 +25,13 @@ export default function Login() {
   const [resetErro, setResetErro] = useState('');
   const [resetCarregando, setResetCarregando] = useState(false);
 
+  useEffect(() => {
+    const qPortal = new URLSearchParams(location.search).get('portal');
+    if (qPortal === 'medico' || qPortal === 'paciente' || qPortal === 'admin') {
+      setPortalAtivo(qPortal);
+    }
+  }, [location.search]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (erro) setErro('');
@@ -28,14 +41,22 @@ export default function Login() {
     e.preventDefault();
     setCarregando(true);
     setErro('');
-    
+
     try {
       const resposta = await api.fazerLogin(formData);
-      
+
       if (resposta.token) {
         localStorage.setItem('@HomeMed:token', resposta.token);
         localStorage.setItem('@HomeMed:usuario', JSON.stringify(resposta.usuario));
-        navigate('/home');
+
+        // Redirecionamento inteligente baseado no tipo de usuário
+        if (resposta.usuario.tipo_usuario === 'admin') {
+          navigate('/admin');
+        } else if (resposta.usuario.tipo_usuario === 'profissional') {
+          navigate('/home');
+        } else {
+          navigate('/home');
+        }
       } else {
         setErro(resposta.error || 'Credenciais inválidas. Verifique seu e-mail e senha.');
       }
@@ -72,17 +93,94 @@ export default function Login() {
     }
   };
 
+  const getThemeColor = () => {
+    if (portalAtivo === 'medico') return '#059669';
+    if (portalAtivo === 'admin') return '#475569';
+    return '#0284c7';
+  };
+
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className="login-card" style={{ maxWidth: '440px', width: '100%' }}>
+        
+        {/* Seletor de Portal (Paciente / Médico / Governança) */}
+        <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', marginBottom: '20px' }}>
+          <button
+            type="button"
+            onClick={() => { setPortalAtivo('paciente'); setErro(''); }}
+            style={{
+              flex: 1,
+              padding: '8px 4px',
+              borderRadius: '7px',
+              border: 'none',
+              background: portalAtivo === 'paciente' ? '#ffffff' : 'transparent',
+              color: portalAtivo === 'paciente' ? '#0284c7' : '#64748b',
+              fontWeight: '700',
+              fontSize: '11px',
+              cursor: 'pointer',
+              boxShadow: portalAtivo === 'paciente' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            👤 Paciente
+          </button>
+          <button
+            type="button"
+            onClick={() => { setPortalAtivo('medico'); setErro(''); }}
+            style={{
+              flex: 1,
+              padding: '8px 4px',
+              borderRadius: '7px',
+              border: 'none',
+              background: portalAtivo === 'medico' ? '#ffffff' : 'transparent',
+              color: portalAtivo === 'medico' ? '#059669' : '#64748b',
+              fontWeight: '700',
+              fontSize: '11px',
+              cursor: 'pointer',
+              boxShadow: portalAtivo === 'medico' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            👨‍⚕️ Médico / Pro
+          </button>
+          <button
+            type="button"
+            onClick={() => { setPortalAtivo('admin'); setErro(''); }}
+            style={{
+              flex: 1,
+              padding: '8px 4px',
+              borderRadius: '7px',
+              border: 'none',
+              background: portalAtivo === 'admin' ? '#ffffff' : 'transparent',
+              color: portalAtivo === 'admin' ? '#334155' : '#64748b',
+              fontWeight: '700',
+              fontSize: '11px',
+              cursor: 'pointer',
+              boxShadow: portalAtivo === 'admin' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            🛡️ Admin
+          </button>
+        </div>
+
         {/* Brand Icon & Header */}
         <div className="login-header">
-          <div className="brand-badge-icon">
+          <div className="brand-badge-icon" style={{ background: portalAtivo === 'medico' ? 'rgba(5, 150, 105, 0.1)' : 'rgba(2, 132, 199, 0.1)', color: getThemeColor() }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
           </div>
           <div className="brand-name">HomeMed</div>
-          <h2>Bem-vindo de volta</h2>
-          <p>Acesse seu portal de saúde domiciliar integrada</p>
+          
+          <h2 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>
+            {portalAtivo === 'medico' ? 'Portal do Especialista' : portalAtivo === 'admin' ? 'Governança & Admin' : 'Portal do Paciente'}
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+            {portalAtivo === 'medico' 
+              ? 'Acesse sua agenda de visitas domiciliares e prontuários'
+              : portalAtivo === 'admin' 
+              ? 'Painel de auditoria médica e regulação de conformidade'
+              : 'Acesse seu portal de saúde domiciliar integrada'}
+          </p>
         </div>
 
         {erro && (
@@ -103,7 +201,7 @@ export default function Login() {
                 name="email" 
                 value={formData.email} 
                 onChange={handleChange} 
-                placeholder="seu.email@dominio.com" 
+                placeholder={portalAtivo === 'medico' ? "medico@clinica.com" : "seu.email@dominio.com"} 
                 required 
               />
             </div>
@@ -149,12 +247,25 @@ export default function Login() {
             </div>
           </div>
 
-          <button type="submit" className="btn-login-submit" disabled={carregando}>
+          <button 
+            type="submit" 
+            className="btn-login-submit" 
+            disabled={carregando}
+            style={{
+              background: portalAtivo === 'medico' 
+                ? 'linear-gradient(135deg, #059669 0%, #047857 100%)' 
+                : portalAtivo === 'admin'
+                ? 'linear-gradient(135deg, #334155 0%, #1e293b 100%)'
+                : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)'
+            }}
+          >
             {carregando ? (
               <span className="btn-spinner"></span>
             ) : (
               <>
-                <span>Acessar Conta</span>
+                <span>
+                  {portalAtivo === 'medico' ? 'Acessar Portal Médico' : portalAtivo === 'admin' ? 'Acessar Governança' : 'Acessar Conta'}
+                </span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </>
             )}
@@ -166,9 +277,21 @@ export default function Login() {
         </div>
 
         <div className="login-footer">
-          <p>
-            Não tem uma conta no HomeMed? <Link to="/cadastro">Cadastre-se grátis</Link>
-          </p>
+          {portalAtivo === 'medico' ? (
+            <p>
+              É profissional e ainda não tem cadastro?{' '}
+              <Link to="/cadastro?tipo=profissional" style={{ color: '#059669', fontWeight: '700' }}>
+                Credencie-se aqui
+              </Link>
+            </p>
+          ) : (
+            <p>
+              Não tem uma conta no HomeMed?{' '}
+              <Link to="/cadastro?tipo=paciente" style={{ color: '#0284c7', fontWeight: '700' }}>
+                Cadastre-se grátis
+              </Link>
+            </p>
+          )}
         </div>
       </div>
 
@@ -223,7 +346,7 @@ export default function Login() {
                   type="email" 
                   value={resetEmail} 
                   onChange={(e) => setResetEmail(e.target.value)} 
-                  placeholder="seu.email@dominio.com"
+                  placeholder="seu.email@dominio.com" 
                   required
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
                 />
@@ -237,7 +360,7 @@ export default function Login() {
                   type="password" 
                   value={resetNovaSenha} 
                   onChange={(e) => setResetNovaSenha(e.target.value)} 
-                  placeholder="••••••••"
+                  placeholder="••••••••" 
                   required
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
                 />

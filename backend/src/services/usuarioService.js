@@ -2,7 +2,7 @@ import { pool } from '../config/database.js';
 import crypto from 'crypto';
 
 export const usuarioService = {
-  async criarUsuario({ email, senha_hash, nome, telefone, tipo_usuario, cpf, registro_profissional, especialidade_principal, bio, preco_base }) {
+  async criarUsuario({ email, senha_hash, nome, telefone, tipo_usuario, cpf, registro_profissional, especialidade_principal, bio, preco_base, unidade_cobranca, endereco }) {
     const id = crypto.randomUUID();
     const cleanEmail = email ? email.trim().toLowerCase() : '';
 
@@ -20,6 +20,25 @@ export const usuarioService = {
         INSERT INTO pacientes (id, usuario_id, cpf, foto_url)
         VALUES ($1, $2, $3, $4);
       `, [pacId, id, defaultCpf, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200']);
+
+      // Se endereço foi informado no cadastro, salva na tabela de endereços
+      if (endereco && endereco.logradouro && endereco.cep) {
+        const endId = crypto.randomUUID();
+        await pool.query(`
+          INSERT INTO enderecos (id, paciente_id, logradouro, numero, complemento, bairro, cidade, uf, cep, padrao)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true);
+        `, [
+          endId, 
+          pacId, 
+          endereco.logradouro, 
+          endereco.numero || 'S/N', 
+          endereco.complemento || '', 
+          endereco.bairro || '', 
+          endereco.cidade || '', 
+          endereco.uf || 'SP', 
+          endereco.cep
+        ]);
+      }
     }
 
     // Se for profissional, cria registro na tabela profissionais
@@ -35,7 +54,7 @@ export const usuarioService = {
         especialidade_principal || 'Clínico Geral',
         bio || 'Profissional de saúde dedicado ao atendimento humanizado.',
         preco_base || 150.00,
-        'hora',
+        unidade_cobranca || 'consulta',
         false
       ]);
     }

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import Navbar from '../components/Navbar';
 import './Perfil.css';
 
 export default function Perfil() {
   const navigate = useNavigate();
+  const [usuario, setUsuario] = useState(null);
   const [abaAtiva, setAbaAtiva] = useState('pessoal');
   const [perfil, setPerfil] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -12,6 +14,7 @@ export default function Perfil() {
   const [historico, setHistorico] = useState([]);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
 
+  // Formulário do Paciente
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -29,36 +32,87 @@ export default function Perfil() {
     cep: ''
   });
 
+  // Formulário do Profissional
+  const [proData, setProData] = useState({
+    registro_profissional: '',
+    especialidade_principal: '',
+    preco_base: '',
+    unidade_cobranca: 'consulta',
+    bio: '',
+    disponivel_hoje: false
+  });
+
+  useEffect(() => {
+    try {
+      const rawUser = localStorage.getItem('@HomeMed:usuario');
+      if (rawUser) {
+        setUsuario(JSON.parse(rawUser));
+      }
+    } catch (e) {}
+
+    carregarPerfil();
+  }, []);
+
   const carregarPerfil = async () => {
     try {
       setCarregando(true);
-      const [dadosPerfil, consultasConcluidas] = await Promise.all([
-        api.obterPerfilPaciente(),
-        api.listarAgendamentos('concluidas')
-      ]);
+      const rawUser = localStorage.getItem('@HomeMed:usuario');
+      const u = rawUser ? JSON.parse(rawUser) : null;
+      const isPro = u?.tipo_usuario === 'profissional';
 
-      if (dadosPerfil && !dadosPerfil.error) {
-        setPerfil(dadosPerfil);
-        setFormData({
-          nome: dadosPerfil.nome || '',
-          email: dadosPerfil.email || '',
-          telefone: dadosPerfil.telefone || '',
-          cpf: dadosPerfil.cpf || ''
-        });
+      if (isPro) {
+        const [dadosPro, consultas] = await Promise.all([
+          api.obterMeuPerfilProfissional(),
+          api.listarAgendamentos('concluidas')
+        ]);
 
-        if (dadosPerfil.endereco) {
-          setEnderecoData({
-            logradouro: dadosPerfil.endereco.logradouro || '',
-            numero: dadosPerfil.endereco.numero || '',
-            complemento: dadosPerfil.endereco.complemento || '',
-            bairro: dadosPerfil.endereco.bairro || '',
-            cidade: dadosPerfil.endereco.cidade || '',
-            uf: dadosPerfil.endereco.uf || '',
-            cep: dadosPerfil.endereco.cep || ''
+        if (dadosPro && !dadosPro.error) {
+          setPerfil(dadosPro);
+          setFormData({
+            nome: dadosPro.nome || u?.nome || '',
+            email: dadosPro.email || u?.email || '',
+            telefone: dadosPro.telefone || u?.telefone || '',
+            cpf: ''
+          });
+          setProData({
+            registro_profissional: dadosPro.registro_profissional || '',
+            especialidade_principal: dadosPro.especialidade_principal || '',
+            preco_base: dadosPro.preco_base ? String(dadosPro.preco_base) : '',
+            unidade_cobranca: dadosPro.unidade_cobranca || 'consulta',
+            bio: dadosPro.bio || '',
+            disponivel_hoje: Boolean(dadosPro.disponivel_hoje)
           });
         }
+        setHistorico(Array.isArray(consultas) ? consultas : []);
+      } else {
+        const [dadosPerfil, consultasConcluidas] = await Promise.all([
+          api.obterPerfilPaciente(),
+          api.listarAgendamentos('concluidas')
+        ]);
+
+        if (dadosPerfil && !dadosPerfil.error) {
+          setPerfil(dadosPerfil);
+          setFormData({
+            nome: dadosPerfil.nome || u?.nome || '',
+            email: dadosPerfil.email || u?.email || '',
+            telefone: dadosPerfil.telefone || u?.telefone || '',
+            cpf: dadosPerfil.cpf || ''
+          });
+
+          if (dadosPerfil.endereco) {
+            setEnderecoData({
+              logradouro: dadosPerfil.endereco.logradouro || '',
+              numero: dadosPerfil.endereco.numero || '',
+              complemento: dadosPerfil.endereco.complemento || '',
+              bairro: dadosPerfil.endereco.bairro || '',
+              cidade: dadosPerfil.endereco.cidade || '',
+              uf: dadosPerfil.endereco.uf || '',
+              cep: dadosPerfil.endereco.cep || ''
+            });
+          }
+        }
+        setHistorico(Array.isArray(consultasConcluidas) ? consultasConcluidas : []);
       }
-      setHistorico(consultasConcluidas || []);
     } catch (err) {
       console.error('Erro ao carregar perfil:', err);
     } finally {
@@ -66,24 +120,50 @@ export default function Perfil() {
     }
   };
 
-  useEffect(() => {
-    carregarPerfil();
-  }, []);
-
   const handleSalvarPerfil = async (e) => {
     e.preventDefault();
     setSalvando(true);
     setMensagemSucesso('');
+
+    const isPro = usuario?.tipo_usuario === 'profissional';
+
     try {
-      await Promise.all([
-        api.atualizarPerfilPaciente({
-          nome: formData.nome,
-          telefone: formData.telefone,
-          email: formData.email
-        }),
-        api.salvarEnderecoPaciente(enderecoData)
-      ]);
-      setMensagemSucesso('Dados cadastrais e endereço salvos com sucesso!');
+      if (isPro) {
+        await Promise.all([
+          api.atualizarPerfilPaciente({
+            nome: formData.nome,
+            telefone: formData.telefone,
+            email: formData.email
+          }),
+          api.salvarCredenciamento({
+            registro_profissional: proData.registro_profissional,
+            especialidade_principal: proData.especialidade_principal,
+            preco_base: parseFloat(proData.preco_base) || 180.00,
+            unidade_cobranca: proData.unidade_cobranca,
+            bio: proData.bio,
+            disponivel_hoje: proData.disponivel_hoje
+          })
+        ]);
+        setMensagemSucesso('Dados do profissional atualizados com sucesso!');
+      } else {
+        await Promise.all([
+          api.atualizarPerfilPaciente({
+            nome: formData.nome,
+            telefone: formData.telefone,
+            email: formData.email
+          }),
+          api.salvarEnderecoPaciente(enderecoData)
+        ]);
+        setMensagemSucesso('Informações pessoais e endereço residencial salvos com sucesso!');
+      }
+
+      // Atualiza usuário no localStorage
+      if (usuario) {
+        const uAtualizado = { ...usuario, nome: formData.nome, email: formData.email };
+        localStorage.setItem('@HomeMed:usuario', JSON.stringify(uAtualizado));
+        setUsuario(uAtualizado);
+      }
+
       await carregarPerfil();
     } catch (err) {
       console.error('Erro ao salvar dados:', err);
@@ -104,31 +184,12 @@ export default function Perfil() {
     return `***.${cpf.substring(4, 7)}.***-**`;
   };
 
+  const tipo = usuario?.tipo_usuario || 'paciente';
+
   return (
     <div className="app-container">
       {/* NAVBAR */}
-      <nav className="navbar">
-        <Link to="/home" className="logo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
-          <strong>HomeMed</strong>
-        </Link>
-        <div className="nav-links">
-          <Link to="/home">Início</Link>
-          <Link to="/consultas">Consultas & Agendamentos</Link>
-          <Link to="/mensagens">Mensagens</Link>
-          <Link to="/credenciamento">Credenciamento</Link>
-          <Link to="/admin">Administração</Link>
-          <Link to="/perfil" className="active">Perfil</Link>
-        </div>
-        <div className="nav-actions">
-          <button className="icon-btn" title="Notificações" aria-label="Notificações">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-          </button>
-          <Link to="/perfil" className="avatar-btn" title="Meu Perfil" aria-label="Meu Perfil">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* CONTEÚDO PRINCIPAL DO PERFIL */}
       <div className="profile-layout">
@@ -138,18 +199,26 @@ export default function Perfil() {
           <div className="user-card-main">
             <div className="avatar-container">
               <img 
-                src={perfil?.foto_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200'} 
-                alt={perfil?.nome || 'Usuário'} 
+                src={perfil?.foto_url || (tipo === 'profissional' ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=200&h=200' : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200')} 
+                alt={perfil?.nome || usuario?.nome || 'Usuário'} 
               />
               <span className="avatar-verified-check">✓</span>
             </div>
             
-            <div className="user-type-pill">PACIENTE VERIFICADO</div>
-            <h2>{perfil?.nome || 'Carregando perfil...'}</h2>
+            <div className="user-type-pill" style={{ background: tipo === 'profissional' ? '#ecfdf5' : '#e0f2fe', color: tipo === 'profissional' ? '#047857' : '#0369a1' }}>
+              {tipo === 'profissional' ? '👨‍⚕️ ESPECIALISTA HOMEMED' : tipo === 'admin' ? '🛡️ ADMINISTRADOR' : '👤 PACIENTE VERIFICADO'}
+            </div>
+            <h2>{formData.nome || usuario?.nome || 'Carregando perfil...'}</h2>
             
             <div className="user-location">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>{perfil?.endereco ? `${perfil.endereco.cidade}, ${perfil.endereco.uf}` : 'São Paulo, SP'}</span>
+              <span>
+                {tipo === 'profissional'
+                  ? 'Atendimento Domiciliar Regional'
+                  : perfil?.endereco?.cidade 
+                  ? `${perfil.endereco.cidade}, ${perfil.endereco.uf}` 
+                  : 'Endereço não cadastrado'}
+              </span>
             </div>
 
             <div className="profile-buttons">
@@ -166,13 +235,22 @@ export default function Perfil() {
 
           <div className="stats-box">
             <div className="stat-item">
-              <strong>{perfil?.estatisticas?.realizadas || historico.length}</strong>
+              <strong>{historico.length}</strong>
               <span>VISITAS REALIZADAS</span>
             </div>
             <div className="stat-divider"></div>
             <div className="stat-item">
-              <strong>{perfil?.estatisticas?.favoritos || 3}</strong>
-              <span>ESPECIALISTAS SALVOS</span>
+              {tipo === 'profissional' ? (
+                <>
+                  <strong>R$ {parseFloat(proData.preco_base || 180).toFixed(0)}</strong>
+                  <span>VALOR BASE</span>
+                </>
+              ) : (
+                <>
+                  <strong>Ativo</strong>
+                  <span>STATUS CONTA</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -185,14 +263,14 @@ export default function Perfil() {
               className={abaAtiva === 'pessoal' ? 'tab-btn active' : 'tab-btn'}
               onClick={() => setAbaAtiva('pessoal')}
             >
-              Informações & Endereço
+              {tipo === 'profissional' ? 'Dados Profissionais & Honorários' : 'Informações & Endereço Residencial'}
             </button>
             <button 
               type="button"
               className={abaAtiva === 'historico' ? 'tab-btn active' : 'tab-btn'}
               onClick={() => setAbaAtiva('historico')}
             >
-              Histórico Clínico ({historico.length})
+              Histórico ({historico.length})
             </button>
             <button 
               type="button"
@@ -211,15 +289,17 @@ export default function Perfil() {
               </div>
             )}
 
-            {/* ABA 1: INFORMAÇÕES PESSOAIS & ENDEREÇO */}
+            {/* ABA 1: INFORMAÇÕES PESSOAIS / PROFISSIONAIS */}
             {abaAtiva === 'pessoal' && (
               <form onSubmit={handleSalvarPerfil} className="profile-form">
+                
+                {/* DADOS CADASTRAIS */}
                 <div className="form-section-card">
                   <div className="section-title-row">
-                    <h3>Dados Cadastrais</h3>
-                    <span className="section-chip">Identificação Oficial</span>
+                    <h3>Identificação Oficial</h3>
+                    <span className="section-chip">Dados de Contato</span>
                   </div>
-                  <p>Suas informações de contato sob proteção de sigilo médico e LGPD.</p>
+                  <p>Informações de identificação sob sigilo e criptografia.</p>
                   
                   <div className="form-grid-2">
                     <div className="field-group">
@@ -244,7 +324,7 @@ export default function Perfil() {
 
                   <div className="form-grid-2" style={{ marginTop: '14px' }}>
                     <div className="field-group">
-                      <label>E-mail</label>
+                      <label>E-mail Cadastrado</label>
                       <input 
                         type="email" 
                         value={formData.email} 
@@ -252,103 +332,173 @@ export default function Perfil() {
                         required
                       />
                     </div>
-                    <div className="field-group">
-                      <label>CPF (Mascarado por LGPD)</label>
-                      <input 
-                        type="text" 
-                        value={formatarCpfLGPD(formData.cpf)} 
-                        disabled
-                        className="input-disabled"
-                      />
-                    </div>
+                    {tipo === 'paciente' && (
+                      <div className="field-group">
+                        <label>CPF (Mascarado por LGPD)</label>
+                        <input 
+                          type="text" 
+                          value={formatarCpfLGPD(formData.cpf)} 
+                          disabled
+                          className="input-disabled"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* ENDEREÇO RESIDENCIAL PARA ATENDIMENTO DOMICILIAR (RN01) */}
-                <div className="form-section-card">
-                  <div className="section-title-row">
-                    <h3>Endereço Principal para Visitas Domiciliares</h3>
-                    <span className="section-chip required">Obrigatório para Consultas</span>
-                  </div>
-                  <p>Este endereço é utilizado pelos especialistas para cálculo de rota e atendimento presencial.</p>
+                {/* SE FOR PROFISSIONAL: CAMPOS CLÍNICOS E HONORÁRIOS */}
+                {tipo === 'profissional' && (
+                  <div className="form-section-card">
+                    <div className="section-title-row">
+                      <h3>Atuação Médica & Honorários</h3>
+                      <span className="section-chip" style={{ background: '#ecfdf5', color: '#047857' }}>Conselho Profissional</span>
+                    </div>
 
-                  <div className="form-grid-3-1">
-                    <div className="field-group">
-                      <label>Logradouro (Rua, Avenida)</label>
-                      <input 
-                        type="text" 
-                        value={enderecoData.logradouro} 
-                        onChange={(e) => setEnderecoData({ ...enderecoData, logradouro: e.target.value })}
-                        placeholder="Ex: Rua das Flores"
-                        required
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label>Número</label>
-                      <input 
-                        type="text" 
-                        value={enderecoData.numero} 
-                        onChange={(e) => setEnderecoData({ ...enderecoData, numero: e.target.value })}
-                        placeholder="123"
-                        required
-                      />
-                    </div>
-                  </div>
+                    <div className="form-grid-2">
+                      <div className="field-group">
+                        <label>Conselho e Registro Profissional</label>
+                        <input 
+                          type="text" 
+                          value={proData.registro_profissional} 
+                          onChange={(e) => setProData({ ...proData, registro_profissional: e.target.value })}
+                          placeholder="Ex: CRM-SP 123456"
+                          required
+                        />
+                      </div>
 
-                  <div className="form-grid-4" style={{ marginTop: '14px' }}>
-                    <div className="field-group">
-                      <label>Complemento</label>
-                      <input 
-                        type="text" 
-                        value={enderecoData.complemento} 
-                        onChange={(e) => setEnderecoData({ ...enderecoData, complemento: e.target.value })}
-                        placeholder="Apto 45"
-                      />
+                      <div className="field-group">
+                        <label>Especialidade Principal</label>
+                        <input 
+                          type="text" 
+                          value={proData.especialidade_principal} 
+                          onChange={(e) => setProData({ ...proData, especialidade_principal: e.target.value })}
+                          placeholder="Ex: Clínica Geral"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="field-group">
-                      <label>Bairro</label>
-                      <input 
-                        type="text" 
-                        value={enderecoData.bairro} 
-                        onChange={(e) => setEnderecoData({ ...enderecoData, bairro: e.target.value })}
-                        placeholder="Bela Vista"
-                        required
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label>Cidade</label>
-                      <input 
-                        type="text" 
-                        value={enderecoData.cidade} 
-                        onChange={(e) => setEnderecoData({ ...enderecoData, cidade: e.target.value })}
-                        placeholder="São Paulo"
-                        required
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label>UF</label>
-                      <input 
-                        type="text" 
-                        value={enderecoData.uf} 
-                        onChange={(e) => setEnderecoData({ ...enderecoData, uf: e.target.value })}
-                        placeholder="SP"
-                        maxLength="2"
-                        required
-                      />
-                    </div>
-                  </div>
 
-                  <div className="field-group" style={{ maxWidth: '240px', marginTop: '14px' }}>
-                    <label>CEP</label>
-                    <input 
-                      type="text" 
-                      value={enderecoData.cep} 
-                      onChange={(e) => setEnderecoData({ ...enderecoData, cep: e.target.value })}
-                      placeholder="01310-100"
-                      required
-                    />
+                    <div className="form-grid-2" style={{ marginTop: '14px' }}>
+                      <div className="field-group">
+                        <label>Preço Base por Atendimento (R$)</label>
+                        <input 
+                          type="number" 
+                          value={proData.preco_base} 
+                          onChange={(e) => setProData({ ...proData, preco_base: e.target.value })}
+                          placeholder="180.00"
+                          required
+                        />
+                      </div>
+
+                      <div className="field-group">
+                        <label>Unidade de Cobrança</label>
+                        <select 
+                          value={proData.unidade_cobranca} 
+                          onChange={(e) => setProData({ ...proData, unidade_cobranca: e.target.value })}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                        >
+                          <option value="consulta">por consulta / visita</option>
+                          <option value="hora">por hora de atendimento</option>
+                          <option value="sessão">por sessão</option>
+                          <option value="turno">por plantão (12h)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="field-group" style={{ marginTop: '14px' }}>
+                      <label>Mini-Bio / Apresentação aos Pacientes</label>
+                      <textarea 
+                        rows="3"
+                        value={proData.bio} 
+                        onChange={(e) => setProData({ ...proData, bio: e.target.value })}
+                        placeholder="Descreva sua experiência clínica e procedimentos atendidos em domicílio."
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* SE FOR PACIENTE: ENDEREÇO RESIDENCIAL */}
+                {tipo === 'paciente' && (
+                  <div className="form-section-card">
+                    <div className="section-title-row">
+                      <h3>Endereço Principal para Visitas Domiciliares</h3>
+                      <span className="section-chip required">Visitas Presenciais</span>
+                    </div>
+                    <p>Utilizado para cálculo de rotas dos profissionais que atendem sua residência.</p>
+
+                    <div className="form-grid-3-1">
+                      <div className="field-group">
+                        <label>Logradouro (Rua, Avenida)</label>
+                        <input 
+                          type="text" 
+                          value={enderecoData.logradouro} 
+                          onChange={(e) => setEnderecoData({ ...enderecoData, logradouro: e.target.value })}
+                          placeholder="Ex: Rua das Flores"
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label>Número</label>
+                        <input 
+                          type="text" 
+                          value={enderecoData.numero} 
+                          onChange={(e) => setEnderecoData({ ...enderecoData, numero: e.target.value })}
+                          placeholder="123"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-grid-4" style={{ marginTop: '14px' }}>
+                      <div className="field-group">
+                        <label>Complemento</label>
+                        <input 
+                          type="text" 
+                          value={enderecoData.complemento} 
+                          onChange={(e) => setEnderecoData({ ...enderecoData, complemento: e.target.value })}
+                          placeholder="Apto 45"
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label>Bairro</label>
+                        <input 
+                          type="text" 
+                          value={enderecoData.bairro} 
+                          onChange={(e) => setEnderecoData({ ...enderecoData, bairro: e.target.value })}
+                          placeholder="Bairro"
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label>Cidade</label>
+                        <input 
+                          type="text" 
+                          value={enderecoData.cidade} 
+                          onChange={(e) => setEnderecoData({ ...enderecoData, cidade: e.target.value })}
+                          placeholder="Cidade"
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label>UF</label>
+                        <input 
+                          type="text" 
+                          value={enderecoData.uf} 
+                          onChange={(e) => setEnderecoData({ ...enderecoData, uf: e.target.value })}
+                          placeholder="SP" 
+                          maxLength="2"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="field-group" style={{ maxWidth: '240px', marginTop: '14px' }}>
+                      <label>CEP</label>
+                      <input 
+                        type="text" 
+                        value={enderecoData.cep} 
+                        onChange={(e) => setEnderecoData({ ...enderecoData, cep: e.target.value })}
+                        placeholder="00000-000"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-submit-row">
                   <button 
@@ -369,13 +519,13 @@ export default function Perfil() {
                   <h3>Histórico de Visitas Domiciliares</h3>
                   <span className="section-chip">Prontuário Integrado</span>
                 </div>
-                <p>Histórico completo de atendimentos presenciais concluídos e avaliações registradas.</p>
+                <p>Histórico completo de atendimentos presenciais concluídos.</p>
                 
                 {historico.length === 0 ? (
                   <div className="empty-history-box">
                     <p>Nenhuma consulta concluída no momento.</p>
-                    <button className="btn-link-action" onClick={() => navigate('/home')}>
-                      Encontrar Especialistas na Home
+                    <button className="btn-link-action" onClick={() => navigate(tipo === 'profissional' ? '/consultas' : '/home')}>
+                      {tipo === 'profissional' ? 'Acessar Agenda de Visitas' : 'Encontrar Especialistas na Home'}
                     </button>
                   </div>
                 ) : (
@@ -384,7 +534,7 @@ export default function Perfil() {
                       <div key={h.id} className="history-item-box">
                         <div className="history-item-top">
                           <div>
-                            <h4>{h.profissional_nome}</h4>
+                            <h4>{tipo === 'profissional' ? (h.paciente_nome || 'Paciente') : (h.profissional_nome || 'Profissional')}</h4>
                             <span className="history-pro-specialty">{h.especialidade_principal}</span>
                           </div>
                           <span className="status-badge-done">Atendimento Concluído</span>
@@ -394,12 +544,6 @@ export default function Perfil() {
                           <span>📅 {new Date(h.data_hora_visita).toLocaleDateString('pt-BR')} às {new Date(h.data_hora_visita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                           <span>💰 R$ {parseFloat(h.valor_total).toFixed(2).replace('.', ',')}</span>
                         </div>
-
-                        {h.avaliacao_nota && (
-                          <div className="history-rating-feedback">
-                            ⭐ Nota enviada: {h.avaliacao_nota}/5 {h.avaliacao_comentario ? `("${h.avaliacao_comentario}")` : ''}
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -414,7 +558,7 @@ export default function Perfil() {
                   <h3>Privacidade & Segurança de Dados</h3>
                   <span className="section-chip">Conformidade CFM & LGPD</span>
                 </div>
-                <p>No HomeMed, seus registros de saúde e dados sensíveis são protegidos por criptografia de nível hospitalar.</p>
+                <p>No HomeMed, seus registros de saúde e dados sensíveis são protegidos por criptografia de ponta a ponta.</p>
                 
                 <div className="security-cards-grid">
                   <div className="security-feature-card">
@@ -436,8 +580,8 @@ export default function Perfil() {
                   <div className="security-feature-card">
                     <div className="security-icon">🩺</div>
                     <div>
-                      <strong>Normas do Conselho Federal de Medicina</strong>
-                      <p>Atendimentos domiciliares e prontuários respeitam integralmente a Resolução CFM nº 2.314/2022.</p>
+                      <strong>Resolução CFM nº 2.314/2022</strong>
+                      <p>Atendimentos e telemedicina em conformidade estrita com o Conselho Federal de Medicina.</p>
                     </div>
                   </div>
                 </div>
@@ -456,8 +600,6 @@ export default function Perfil() {
         </div>
         <div className="footer-links">
           <span>© 2026 HomeMed • Gestão de Perfil</span>
-          <a href="#">Privacidade</a>
-          <a href="#">Termos de Uso</a>
         </div>
       </footer>
     </div>

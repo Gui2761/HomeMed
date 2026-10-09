@@ -60,6 +60,31 @@ export const api = {
     return response.json();
   },
 
+  async obterMeuPerfilProfissional() {
+    const response = await fetch(`${API_URL}/profissionais-me`, {
+      headers: getHeaders()
+    });
+    return response.json();
+  },
+
+  async salvarCredenciamento(dados) {
+    const response = await fetch(`${API_URL}/profissionais/credenciamento`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(dados)
+    });
+    return response.json();
+  },
+
+  async alternarVerificacaoProfissional(id, verificado) {
+    const response = await fetch(`${API_URL}/profissionais/${id}/verificacao`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ verificado })
+    });
+    return response.json();
+  },
+
   // Perfil do Paciente
   async obterPerfilPaciente() {
     const response = await fetch(`${API_URL}/pacientes/me`, {

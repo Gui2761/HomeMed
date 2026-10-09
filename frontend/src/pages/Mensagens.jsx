@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import Navbar from '../components/Navbar';
 import './Mensagens.css';
 
 export default function Mensagens() {
@@ -109,26 +110,7 @@ export default function Mensagens() {
   return (
     <div className="app-container">
       {/* NAVBAR */}
-      <nav className="navbar">
-        <div className="logo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
-          <strong>HomeMed</strong>
-        </div>
-        <div className="nav-links">
-          <Link to="/home">Início</Link>
-          <Link to="/consultas">Consultas & Agendamentos</Link>
-          <Link to="/mensagens" className="active">Mensagens</Link>
-          <Link to="/credenciamento">Credenciamento</Link>
-          <Link to="/admin">Administração</Link>
-          <Link to="/perfil">Perfil</Link>
-        </div>
-        <div className="nav-actions">
-          <button className="icon-btn" title="Notificações"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
-          <Link to="/perfil" className="avatar-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* CHAT LAYOUT 3 COLUNAS (RF15, RF16, RF17, RF18) */}
       <div className="chat-layout">

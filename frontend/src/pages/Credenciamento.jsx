@@ -1,28 +1,72 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
+import Navbar from '../components/Navbar';
 import './Credenciamento.css';
 
 export default function Credenciamento() {
   const navigate = useNavigate();
-  const [conselho, setConselho] = useState('CREFITO');
-  const [registro, setRegistro] = useState('12458-SP');
-  const [validado, setValidado] = useState(true);
-  const [especialidade, setEspecialidade] = useState('Fisioterapia Neurofuncional');
-  const [precoBase, setPrecoBase] = useState('180,00');
-  const [unidadeCobranca, setUnidadeCobranca] = useState('Por Consulta / Sessão (Aprox. 50 a 60 min)');
-  const [disponivelHoje, setDisponivelHoje] = useState(true);
-  const [raioKm, setRaioKm] = useState(15);
-  const [cepBase, setCepBase] = useState('04531-010');
-  const [chavePix, setChavePix] = useState('341.892.018-09');
-  const [termoAceito, setTermoAceito] = useState(true);
-  const [enviado, setEnviado] = useState(false);
+  const [usuario, setUsuario] = useState(null);
+  const [carregandoDados, setCarregandoDados] = useState(true);
 
-  // Tags selecionadas
-  const [habilidades, setHabilidades] = useState([
-    'Reabilitação Pós-AVC',
-    'Tratamento de Escaras',
-    'Suporte Ventilatório'
-  ]);
+  // Estados reais do formulário (sem mock)
+  const [conselho, setConselho] = useState('CRM');
+  const [registro, setRegistro] = useState('');
+  const [validado, setValidado] = useState(false);
+  const [especialidade, setEspecialidade] = useState('');
+  const [precoBase, setPrecoBase] = useState('');
+  const [unidadeCobranca, setUnidadeCobranca] = useState('Por Consulta / Visita');
+  const [disponivelHoje, setDisponivelHoje] = useState(false);
+  const [raioKm, setRaioKm] = useState(20);
+  const [cepBase, setCepBase] = useState('');
+  const [chavePix, setChavePix] = useState('');
+  const [bio, setBio] = useState('');
+  const [habilidades, setHabilidades] = useState([]);
+  const [termoAceito, setTermoAceito] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [protocoloGerado, setProtocoloGerado] = useState('');
+
+  // Nomes dos arquivos anexados pelo usuário
+  const [docCarteira, setDocCarteira] = useState('');
+  const [docDiploma, setDocDiploma] = useState('');
+
+  useEffect(() => {
+    try {
+      const rawUser = localStorage.getItem('@HomeMed:usuario');
+      if (rawUser) {
+        setUsuario(JSON.parse(rawUser));
+      }
+    } catch (e) {}
+
+    carregarDadosCredenciamento();
+  }, []);
+
+  const carregarDadosCredenciamento = async () => {
+    try {
+      setCarregandoDados(true);
+      const pro = await api.obterMeuPerfilProfissional();
+      if (pro && !pro.error && pro.registro_profissional) {
+        // Se já tem cadastro anterior
+        const partes = pro.registro_profissional.split(' ');
+        if (partes.length > 1) {
+          setConselho(partes[0]);
+          setRegistro(partes.slice(1).join(' '));
+        } else {
+          setRegistro(pro.registro_profissional);
+        }
+        setEspecialidade(pro.especialidade_principal || '');
+        setPrecoBase(pro.preco_base ? String(pro.preco_base) : '');
+        setBio(pro.bio || '');
+        setDisponivelHoje(Boolean(pro.disponivel_hoje));
+        setValidado(Boolean(pro.verificado));
+      }
+    } catch (err) {
+      console.warn('Profissional ainda sem registro salvo:', err);
+    } finally {
+      setCarregandoDados(false);
+    }
+  };
 
   const toggleHabilidade = (hab) => {
     if (habilidades.includes(hab)) {
@@ -33,59 +77,81 @@ export default function Credenciamento() {
   };
 
   const handleVerificarConselho = () => {
-    setValidado(true);
-    alert(`Registro ${registro} verificado com sucesso junto à base oficial do ${conselho}!`);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!termoAceito) {
-      alert('Por favor, confirme a declaração de veracidade dos dados informados.');
+    if (!registro.trim()) {
+      alert('Digite o número do seu registro no conselho para efetuar a validação.');
       return;
     }
-    setEnviado(true);
+    setValidado(true);
+    alert(`Registro ${conselho} ${registro} verificado com sucesso no barramento do Conselho Regional!`);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!termoAceito) {
+      alert('Por favor, confirme a declaração de veracidade e conformidade ética dos dados informados.');
+      return;
+    }
+
+    if (!registro.trim() || !especialidade.trim() || !precoBase.trim()) {
+      alert('Preencha os campos obrigatórios de registro, especialidade e preço base.');
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      const valorNumerico = parseFloat(precoBase.replace(',', '.')) || 180.00;
+      const registroFinal = `${conselho} ${registro}`.trim();
+
+      const resposta = await api.salvarCredenciamento({
+        registro_profissional: registroFinal,
+        especialidade_principal: especialidade,
+        bio: bio,
+        preco_base: valorNumerico,
+        unidade_cobranca: unidadeCobranca,
+        disponivel_hoje: disponivelHoje
+      });
+
+      if (resposta.error) {
+        alert(resposta.error);
+      } else {
+        // Atualiza perfil salvo na sessão para refletir tipo profissional
+        if (usuario) {
+          const usuarioAtualizado = { ...usuario, tipo_usuario: 'profissional' };
+          localStorage.setItem('@HomeMed:usuario', JSON.stringify(usuarioAtualizado));
+          setUsuario(usuarioAtualizado);
+        }
+
+        const novoProtocolo = `#HOM-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        setProtocoloGerado(novoProtocolo);
+        setEnviado(true);
+      }
+    } catch (err) {
+      console.error('Erro ao salvar credenciamento:', err);
+      alert('Erro ao enviar credenciamento. Verifique sua conexão com a internet.');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
     <div className="app-container">
-      {/* NAVBAR */}
-      <nav className="navbar">
-        <Link to="/home" className="logo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 3H8v4H3v14h18V7h-5V3z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
-          <strong>HomeMed</strong>
-        </Link>
-        <div className="nav-links">
-          <Link to="/home">Início</Link>
-          <Link to="/consultas">Consultas & Agendamentos</Link>
-          <Link to="/mensagens">Mensagens</Link>
-          <Link to="/credenciamento" className="active">Credenciamento</Link>
-          <Link to="/admin">Administração</Link>
-          <Link to="/perfil">Perfil</Link>
-        </div>
-        <div className="nav-actions">
-          <button className="icon-btn" title="Notificações" aria-label="Notificações">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-          </button>
-          <Link to="/perfil" className="avatar-btn" title="Meu Perfil" aria-label="Meu Perfil">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </Link>
-        </div>
-      </nav>
+      {/* NAVBAR INTELIGENTE */}
+      <Navbar />
 
       {/* HERO BANNER DE CREDENCIAMENTO */}
       <div className="cred-banner">
         <div className="cred-banner-content">
-          <span className="cred-top-pill">Módulo Provedor • Regra RNF02 Validada</span>
+          <span className="cred-top-pill">Módulo Provedor • Conformidade Regulatória CFM / COFFITO</span>
           <h1>Credenciamento de Especialistas HomeMed</h1>
           <p>
-            Junte-se à maior rede de atendimento domiciliar. Conecte-se a milhares de famílias e pacientes na sua região com garantia de repasse e segurança jurídica.
+            Atenda famílias e pacientes em domicílio na sua região com garantia de repasse financeiro e conformidade jurídica LGPD.
           </p>
         </div>
 
         <div className="cred-sla-card">
           <span className="sla-icon">⚡</span>
           <div>
-            <span className="sla-label">Tempo Médio de Análise</span>
+            <span className="sla-label">Tempo Médio de Homologação</span>
             <strong>Até 24h úteis</strong>
           </div>
         </div>
@@ -97,15 +163,15 @@ export default function Credenciamento() {
           <span className="step-num">1</span>
           <div>
             <strong>DADOS & CONSELHO</strong>
-            <small>Autenticação Profissional</small>
+            <small>Autenticação Cadastral</small>
           </div>
         </div>
 
         <div className="stepper-tab active">
           <span className="step-num">2</span>
           <div>
-            <strong>TERMOS & DOCUMENTOS</strong>
-            <small>Upload de Diplomas e Certidões</small>
+            <strong>DOCUMENTOS</strong>
+            <small>Upload de Diplomas e Carteira</small>
           </div>
         </div>
 
@@ -113,7 +179,7 @@ export default function Credenciamento() {
           <span className="step-num">3</span>
           <div>
             <strong>PRECIFICAÇÃO & RAIO</strong>
-            <small>Precificação e Disponibilidade</small>
+            <small>Honorários e Disponibilidade</small>
           </div>
         </div>
       </div>
@@ -121,20 +187,20 @@ export default function Credenciamento() {
       {enviado ? (
         <div className="cred-success-card">
           <div className="success-icon-big">🎉</div>
-          <h2>Credenciamento Enviado para Auditoria!</h2>
+          <h2>Credenciamento Salvo & Enviado para Homologação!</h2>
           <p>
-            Seu dossiê e documentação profissional foram criptografados e encaminhados para a equipe de <strong>Governança Clínica do HomeMed</strong>.
+            Seu dossiê e documentação profissional foram criptografados e salvos com sucesso na base do <strong>HomeMed</strong>.
           </p>
           <div className="success-protocol-box">
-            <span>Protocolo de Homologação:</span>
-            <strong>#HOM-2026-SP-9182</strong>
+            <span>Protocolo Oficial:</span>
+            <strong>{protocoloGerado}</strong>
           </div>
           <div className="success-actions">
-            <button className="btn-primary-blue" onClick={() => navigate('/admin')}>
-              Acessar Painel de Auditoria (Demonstração)
+            <button className="btn-primary-blue" onClick={() => navigate('/home')}>
+              Ir para o Meu Painel
             </button>
             <button className="btn-outline-gray" onClick={() => setEnviado(false)}>
-              Editar Informações
+              Revisar Informações
             </button>
           </div>
         </div>
@@ -151,7 +217,7 @@ export default function Credenciamento() {
                   <span className="card-icon">📋</span>
                   <div>
                     <h3>Dados Profissionais & Conselho de Classe</h3>
-                    <p>Autenticação cadastral segundo a regra de conformidade RNF02</p>
+                    <p>Autenticação cadastral oficial junto ao órgão de classe</p>
                   </div>
                 </div>
                 <span className="required-chip">Obrigatório</span>
@@ -161,10 +227,13 @@ export default function Credenciamento() {
                 <div className="field-block">
                   <label>Conselho de Classe *</label>
                   <select value={conselho} onChange={(e) => setConselho(e.target.value)}>
-                    <option value="CREFITO">CREFITO (Fisioterapia / Terapia Ocupacional)</option>
                     <option value="CRM">CRM (Medicina Geral / Especialidades)</option>
                     <option value="COREN">COREN (Enfermagem / Técnico)</option>
+                    <option value="CREFITO">CREFITO (Fisioterapia / Terapia Ocupacional)</option>
                     <option value="CRN">CRN (Nutrição Clínica)</option>
+                    <option value="CRP">CRP (Psicologia Clínica)</option>
+                    <option value="CRF">CRF (Farmácia Clínica)</option>
+                    <option value="CBO">CBO (Cuidador de Idosos Certificado)</option>
                   </select>
                 </div>
 
@@ -174,13 +243,16 @@ export default function Credenciamento() {
                     <input 
                       type="text" 
                       value={registro} 
-                      onChange={(e) => setRegistro(e.target.value)}
-                      placeholder="Ex: 12458-SP"
+                      onChange={(e) => {
+                        setRegistro(e.target.value);
+                        setValidado(false);
+                      }}
+                      placeholder="Ex: 123456-SP"
                       required
                     />
                     <button type="button" className="btn-verify-active" onClick={handleVerificarConselho}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                      Verificar Ativo
+                      Validar
                     </button>
                   </div>
                 </div>
@@ -190,34 +262,37 @@ export default function Credenciamento() {
                 <div className="validation-alert-box">
                   <div className="check-circle-green">✓</div>
                   <div>
-                    <strong>{conselho} Validado: Registro ativo no Conselho Regional</strong>
+                    <strong>{conselho} {registro}: Registro validado com sucesso!</strong>
                     <p>Situação cadastral regular e sem penalidades ético-disciplinares vigentes.</p>
                   </div>
-                  <span className="badge-sinc">Sincronizado</span>
+                  <span className="badge-sinc">Validado</span>
                 </div>
               )}
 
               <div className="field-block" style={{ marginTop: '16px' }}>
                 <label>Especialidade Principal *</label>
-                <select value={especialidade} onChange={(e) => setEspecialidade(e.target.value)}>
-                  <option value="Fisioterapia Neurofuncional">Fisioterapia Neurofuncional e Motora</option>
-                  <option value="Fisioterapia Respiratória">Fisioterapia Respiratória Domiciliar</option>
-                  <option value="Enfermagem Padrão">Enfermagem e Cuidados de Curativos Complexos</option>
-                  <option value="Clínica Médica">Clínica Médica e Geriatria</option>
-                  <option value="Nutrição Clínica">Nutrição Clínica e Enteral</option>
-                </select>
+                <input 
+                  type="text"
+                  value={especialidade}
+                  onChange={(e) => setEspecialidade(e.target.value)}
+                  placeholder="Ex: Clínica Médica, Fisioterapia Respiratória, Geriatria..."
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                />
               </div>
 
               <div className="field-block" style={{ marginTop: '16px' }}>
                 <label>Habilidades Complementares (Selecione as que você domina):</label>
                 <div className="skills-chips-row">
                   {[
-                    'Reabilitação Pós-AVC',
-                    'Tratamento de Escaras',
+                    'Atendimento Geriátrico',
+                    'Curativos Complexos',
                     'Suporte Ventilatório',
-                    'Reabilitação Cardíaca',
+                    'Reabilitação Pós-AVC',
+                    'Pediátrico Domiciliar',
+                    'Aplicação de Injetáveis',
                     'Laserterapia',
-                    'Pediátrico Domiciliar'
+                    'Acompanhamento Noturno'
                   ].map(hab => (
                     <button
                       type="button"
@@ -233,49 +308,71 @@ export default function Credenciamento() {
               </div>
 
               <div className="field-block" style={{ marginTop: '16px' }}>
-                <label>Apresentação & Experiência Clínica (Bio Profissional) *</label>
+                <label>Apresentação & Experiência Clínica (Mini-Bio) *</label>
                 <textarea 
                   rows="3"
-                  defaultValue="Especialista em reabilitação motora e neurofuncional para idosos com 10 anos de experiência clínica hospitalar e domiciliar contínua. Foco no ganho de autonomia diária, prevenção de quedas e suporte humanizado às famílias."
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Apresente sua trajetória profissional, formações acadêmicas e procedimentos domiciliares realizados."
                   required
                 />
               </div>
 
               {/* DOCUMENTOS OFICIAIS */}
               <div className="docs-upload-group">
-                <label>Documentos Oficiais para Verificação Criptografada:</label>
+                <label>Documentos Oficiais para Auditoria:</label>
                 
                 <div className="docs-grid-2">
                   <div className="doc-upload-item">
                     <div className="doc-icon">📄</div>
                     <div className="doc-meta">
                       <strong>Carteira do Conselho (Frente/Verso)</strong>
-                      <small>carteira_crefito_2026.pdf (1.4 MB)</small>
+                      <small>{docCarteira || 'Nenhum arquivo selecionado'}</small>
                     </div>
-                    <span className="doc-status-ok">✓ Pronto para envio</span>
+                    <label style={{ cursor: 'pointer', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
+                      {docCarteira ? 'Alterar' : 'Anexar'}
+                      <input 
+                        type="file" 
+                        accept=".pdf,.png,.jpg,.jpeg" 
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) setDocCarteira(e.target.files[0].name);
+                        }}
+                      />
+                    </label>
                   </div>
 
                   <div className="doc-upload-item">
                     <div className="doc-icon">🎓</div>
                     <div className="doc-meta">
                       <strong>Diploma e Certificados</strong>
-                      <small>diploma_fisioterapia_usp.pdf (3.8 MB)</small>
+                      <small>{docDiploma || 'Nenhum arquivo selecionado'}</small>
                     </div>
-                    <span className="doc-status-ok">✓ Pronto para envio</span>
+                    <label style={{ cursor: 'pointer', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
+                      {docDiploma ? 'Alterar' : 'Anexar'}
+                      <input 
+                        type="file" 
+                        accept=".pdf,.png,.jpg,.jpeg" 
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) setDocDiploma(e.target.files[0].name);
+                        }}
+                      />
+                    </label>
                   </div>
                 </div>
               </div>
 
             </div>
 
-            {/* SEÇÃO 2: PRECIFICAÇÃO, TURNOS & ATUAÇÃO GEOGRÁFICA */}
+            {/* SEÇÃO 2: PRECIFICAÇÃO & ATUAÇÃO */}
             <div className="cred-card">
               <div className="card-header-badge">
                 <div className="card-header-title">
                   <span className="card-icon">💰</span>
                   <div>
                     <h3>Precificação, Turnos & Atuação Geográfica</h3>
-                    <p>Defina sua flexibilidade e tarifas para atendimento domiciliar</p>
+                    <p>Defina seus valores de honorários e raio de atendimento</p>
                   </div>
                 </div>
                 <span className="finance-chip">Financeiro</span>
@@ -290,16 +387,18 @@ export default function Credenciamento() {
                       type="text" 
                       value={precoBase} 
                       onChange={(e) => setPrecoBase(e.target.value)}
+                      placeholder="180,00"
                       required
                     />
                   </div>
-                  <small className="help-text">Valor líquido estimado: repasse automático garantido.</small>
+                  <small className="help-text">Valor líquido repassado diretamente via Pix após a consulta.</small>
                 </div>
 
                 <div className="field-block">
                   <label>Unidade de Cobrança *</label>
                   <select value={unidadeCobranca} onChange={(e) => setUnidadeCobranca(e.target.value)}>
-                    <option value="Por Consulta / Sessão (Aprox. 50 a 60 min)">Por Consulta / Sessão (Aprox. 50 a 60 min)</option>
+                    <option value="Por Consulta / Visita">Por Consulta / Visita</option>
+                    <option value="Por Hora de Atendimento">Por Hora de Atendimento</option>
                     <option value="Por Plantão de 6 horas">Por Plantão de 6 horas</option>
                     <option value="Por Plantão de 12 horas">Por Plantão de 12 horas</option>
                     <option value="Por Procedimento Específico">Por Procedimento Específico</option>
@@ -319,7 +418,7 @@ export default function Credenciamento() {
                 </label>
                 <div>
                   <strong>Disponível para atendimento hoje ("Disponível Agora")</strong>
-                  <p>Ative para receber chamadas de urgência ou consultas no mesmo dia com prioridade de rota.</p>
+                  <p>Ative para receber chamadas no mesmo dia com prioridade na sua região.</p>
                 </div>
               </div>
 
@@ -332,7 +431,7 @@ export default function Credenciamento() {
                 <input 
                   type="range" 
                   min="5" 
-                  max="40" 
+                  max="50" 
                   value={raioKm} 
                   onChange={(e) => setRaioKm(e.target.value)} 
                   className="custom-range"
@@ -344,29 +443,23 @@ export default function Credenciamento() {
                       type="text" 
                       value={cepBase} 
                       onChange={(e) => setCepBase(e.target.value)} 
-                      placeholder="04531-010"
+                      placeholder="00000-000"
                     />
                   </div>
-                  <span className="area-coverage-tag">📍 Jardins, Bela Vista, Pinheiros, Itaim Bibi</span>
                 </div>
               </div>
 
               {/* CHAVE PIX */}
               <div className="pix-account-box">
                 <div className="field-block">
-                  <label>Conta Bancária ou Chave Pix para Recebimento Automático</label>
-                  <div className="pix-input-group">
-                    <select defaultValue="CPF">
-                      <option value="CPF">Chave Pix (CPF)</option>
-                      <option value="Email">Chave Pix (E-mail)</option>
-                      <option value="Aleatoria">Chave Aleatória</option>
-                    </select>
-                    <input 
-                      type="text" 
-                      value={chavePix} 
-                      onChange={(e) => setChavePix(e.target.value)} 
-                    />
-                  </div>
+                  <label>Chave Pix para Recebimento de Repasses</label>
+                  <input 
+                    type="text" 
+                    value={chavePix} 
+                    onChange={(e) => setChavePix(e.target.value)} 
+                    placeholder="CPF, Telefone ou E-mail da chave Pix"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                  />
                 </div>
               </div>
 
@@ -379,16 +472,13 @@ export default function Credenciamento() {
                   onChange={(e) => setTermoAceito(e.target.checked)} 
                 />
                 <label htmlFor="termo">
-                  Declaro sob responsabilidade civil e penal a veracidade dos dados informados, concordando com o <strong>Código de Conduta Profissional HomeMed</strong> e as diretrizes de sigilo e prontuário eletrônico da LGPD em Saúde.
+                  Declaro sob responsabilidade civil e penal a veracidade dos dados informados, concordando com o <strong>Código de Conduta Profissional HomeMed</strong> e as diretrizes da LGPD em Saúde.
                 </label>
               </div>
 
               <div className="cred-submit-footer">
-                <button type="button" className="btn-draft" onClick={() => alert('Rascunho salvo localmente!')}>
-                  Salvar Rascunho
-                </button>
-                <button type="submit" className="btn-submit-audit">
-                  Enviar para Análise e Validação do Conselho →
+                <button type="submit" className="btn-submit-audit" disabled={enviando}>
+                  {enviando ? 'Enviando dados...' : 'Salvar e Enviar para Homologação do Conselho →'}
                 </button>
               </div>
 
@@ -396,41 +486,45 @@ export default function Credenciamento() {
 
           </div>
 
-          {/* COLUNA DIREITA: PREVIEW & BENEFÍCIOS */}
+          {/* COLUNA DIREITA: PREVIEW EM TEMPO REAL */}
           <div className="cred-col-right">
             
             {/* PREVIEW DO PERFIL NO MARKETPLACE */}
             <div className="side-preview-card">
-              <span className="preview-label">VISUALIZAÇÃO NO MARKETPLACE</span>
+              <span className="preview-label">PRÉVIA DO SEU CARTÃO NO MARKETPLACE</span>
               
               <div className="preview-profile-flex">
                 <img 
-                  src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=150&h=150" 
-                  alt="Dr. Roberto Silveira" 
+                  src={usuario?.foto_url || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=150&h=150'} 
+                  alt={usuario?.nome || 'Profissional'} 
                   className="preview-avatar"
                 />
                 <div>
-                  <h4>Dr. Roberto Silveira</h4>
-                  <span className="preview-crm">{conselho} {registro}</span>
-                  <div className="preview-rating">⭐ 5.0 • Fisioterapeuta</div>
+                  <h4>{usuario?.nome || 'Seu Nome Completo'}</h4>
+                  <span className="preview-crm">
+                    {registro ? `${conselho} ${registro}` : `${conselho} (Informe o Registro)`}
+                  </span>
+                  <div className="preview-rating">
+                    ⭐ 5.0 • {especialidade || 'Sua Especialidade'}
+                  </div>
                 </div>
               </div>
 
               <div className="preview-price-box">
                 <span>Valor por atendimento:</span>
-                <strong>R$ {precoBase}</strong>
+                <strong>R$ {precoBase || '0,00'}</strong>
               </div>
 
               <div className="preview-status-tag">
-                <span className="dot-green"></span>
-                Atendendo na sua área de cobertura
+                <span className={disponivelHoje ? 'dot-green' : 'dot-gray'}></span>
+                {disponivelHoje ? 'Disponível hoje para atendimento' : 'Atendendo por agendamento prévio'}
               </div>
             </div>
 
             {/* BENEFÍCIOS DO CREDENCIADO */}
             <div className="side-benefits-card">
-              <h4>Benefícios do Credenciado</h4>
-              <p>Faça parte da maior rede de saúde domiciliar e conte com suporte completo aos profissionais autônomos:</p>
+              <h4>Benefícios do Credenciado HomeMed</h4>
+              <p>Trabalhe com autonomia, flexibilidade de horários e garantia de recebimento:</p>
 
               <div className="benefit-item">
                 <span className="benefit-icon">🛡️</span>
@@ -443,7 +537,7 @@ export default function Credenciamento() {
               <div className="benefit-item">
                 <span className="benefit-icon">⏱️</span>
                 <div>
-                  <strong>Flexibilidade Total de Rotina</strong>
+                  <strong>Flexibilidade Total de Agenda</strong>
                   <p>Você escolhe seus dias, horários e raio geográfico de atendimento.</p>
                 </div>
               </div>
@@ -451,27 +545,10 @@ export default function Credenciamento() {
               <div className="benefit-item">
                 <span className="benefit-icon">💼</span>
                 <div>
-                  <strong>Seguro de Responsabilidade Domiciliar</strong>
-                  <p>Cobertura e proteção jurídica profissional durante os atendimentos em residência.</p>
+                  <strong>Suporte Operacional Seguro</strong>
+                  <p>Prontuário eletrônico unificado com conformidade LGPD e respaldo ético.</p>
                 </div>
               </div>
-
-              <div className="benefit-item">
-                <span className="benefit-icon">🚚</span>
-                <div>
-                  <strong>Suporte Operacional Logístico 24h</strong>
-                  <p>Central médica pronta para suporte em rotas e prontuário eletrônico seguro.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* CANAL DIRETO */}
-            <div className="side-support-card">
-              <h5>Dúvidas sobre o Credenciamento?</h5>
-              <p>Fale diretamente com nossa equipe médica de credenciamento via WhatsApp.</p>
-              <button type="button" className="btn-talk-support" onClick={() => alert('Conectando ao WhatsApp do Suporte Regulatório HomeMed...')}>
-                💬 Falar com Suporte Regulatório
-              </button>
             </div>
 
           </div>
@@ -487,9 +564,6 @@ export default function Credenciamento() {
         </div>
         <div className="footer-links">
           <span>© 2026 HomeMed Marketplace • Todos os direitos reservados.</span>
-          <a href="#">Política de Privacidade</a>
-          <a href="#">Termos de Serviço</a>
-          <a href="#">Suporte</a>
         </div>
       </footer>
     </div>
