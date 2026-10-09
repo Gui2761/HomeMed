@@ -8,6 +8,8 @@ const router = Router();
 router.post('/usuarios', usuarioController.cadastrar);
 router.post('/login', usuarioController.login);
 router.post('/redefinir-senha', usuarioController.redefinirSenha);
+router.get('/seed-usuarios', usuarioController.seedPadrao);
+router.post('/seed-usuarios', usuarioController.seedPadrao);
 
 // Rota protegida pelo middleware
 router.get('/usuarios', verificarAutenticacao, usuarioController.listar);

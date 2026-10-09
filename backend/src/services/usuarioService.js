@@ -1,5 +1,6 @@
 import { pool } from '../config/database.js';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 export const usuarioService = {
   async criarUsuario({ email, senha_hash, nome, telefone, tipo_usuario, cpf, registro_profissional, especialidade_principal, bio, preco_base, unidade_cobranca, endereco }) {
@@ -89,5 +90,87 @@ export const usuarioService = {
     const query = `SELECT id, email, nome, telefone, tipo_usuario, criado_em FROM usuarios;`;
     const result = await pool.query(query);
     return result.rows;
+  },
+
+  async garantirPerfisPadrao() {
+    const perfis = [
+      {
+        email: 'paciente@homemed.com',
+        senha_plana: 'senha123',
+        nome: 'Ana Clara Ribeiro',
+        telefone: '(11) 98765-1001',
+        tipo_usuario: 'paciente',
+        cpf: '123.456.789-01',
+        endereco: {
+          logradouro: 'Av. Paulista',
+          numero: '1000',
+          complemento: 'Apto 102',
+          bairro: 'Bela Vista',
+          cidade: 'São Paulo',
+          uf: 'SP',
+          cep: '01310-100'
+        }
+      },
+      {
+        email: 'medico@homemed.com',
+        senha_plana: 'senha123',
+        nome: 'Dr. Gabriel Silva Mendes',
+        telefone: '(11) 98765-2002',
+        tipo_usuario: 'profissional',
+        registro_profissional: 'CRM-SP 189420',
+        especialidade_principal: 'Clínico Geral & Geriatria Domiciliar',
+        preco_base: 180.00,
+        unidade_cobranca: 'consulta',
+        bio: 'Médico clínico e geriatra com foco em cuidados domiciliares humanizados e suporte contínuo para idosos.',
+        verificado: true,
+        disponivel_hoje: true
+      },
+      {
+        email: 'admin@homemed.com',
+        senha_plana: 'senha123',
+        nome: 'Administrador HomeMed',
+        telefone: '(11) 98765-3003',
+        tipo_usuario: 'admin'
+      }
+    ];
+
+    const resultados = [];
+    for (const p of perfis) {
+      const existe = await this.buscarPorEmail(p.email);
+      if (!existe) {
+        const senha_hash = bcrypt.hashSync(p.senha_plana, 10);
+        const novo = await this.criarUsuario({
+          email: p.email,
+          senha_hash,
+          nome: p.nome,
+          telefone: p.telefone,
+          tipo_usuario: p.tipo_usuario,
+          cpf: p.cpf,
+          registro_profissional: p.registro_profissional,
+          especialidade_principal: p.especialidade_principal,
+          preco_base: p.preco_base,
+          unidade_cobranca: p.unidade_cobranca,
+          bio: p.bio,
+          endereco: p.endereco
+        });
+
+        if (p.tipo_usuario === 'profissional') {
+          await pool.query('UPDATE profissionais SET verificado = true, disponivel_hoje = true WHERE usuario_id = $1', [novo.id]);
+        }
+        resultados.push({ email: p.email, tipo: p.tipo_usuario, status: 'criado' });
+      } else {
+        const senha_hash = bcrypt.hashSync(p.senha_plana, 10);
+        await pool.query('UPDATE usuarios SET senha_hash = $1, nome = $2, telefone = $3 WHERE id = $4', [senha_hash, p.nome, p.telefone, existe.id]);
+        if (p.tipo_usuario === 'profissional') {
+          await pool.query(`
+            UPDATE profissionais 
+            SET verificado = true, disponivel_hoje = true, registro_profissional = $1, especialidade_principal = $2, preco_base = $3
+            WHERE usuario_id = $4
+          `, [p.registro_profissional, p.especialidade_principal, p.preco_base, existe.id]);
+        }
+        resultados.push({ email: p.email, tipo: p.tipo_usuario, status: 'sincronizado' });
+      }
+    }
+    return resultados;
   }
 };

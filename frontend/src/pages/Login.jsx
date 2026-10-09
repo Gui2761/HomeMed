@@ -272,6 +272,48 @@ export default function Login() {
           </button>
         </form>
 
+        {/* Contas de Demonstração Rápidas */}
+        <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '10px', padding: '12px', marginTop: '16px', textAlign: 'center' }}>
+          <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
+            ⚡ Acesso de Demonstração (1 Clique)
+          </span>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setPortalAtivo('paciente');
+                setFormData({ email: 'paciente@homemed.com', senha: 'senha123' });
+                setErro('');
+              }}
+              style={{ flex: 1, padding: '7px 4px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', cursor: 'pointer' }}
+            >
+              👤 Paciente
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPortalAtivo('medico');
+                setFormData({ email: 'medico@homemed.com', senha: 'senha123' });
+                setErro('');
+              }}
+              style={{ flex: 1, padding: '7px 4px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#047857', cursor: 'pointer' }}
+            >
+              👨‍⚕️ Médico
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPortalAtivo('admin');
+                setFormData({ email: 'admin@homemed.com', senha: 'senha123' });
+                setErro('');
+              }}
+              style={{ flex: 1, padding: '7px 4px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', color: '#334155', cursor: 'pointer' }}
+            >
+              🛡️ Admin
+            </button>
+          </div>
+        </div>
+
         <div className="login-divider">
           <span>OU</span>
         </div>

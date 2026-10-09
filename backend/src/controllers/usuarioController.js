@@ -68,7 +68,12 @@ export const usuarioController = {
         return res.status(400).json({ error: 'Informe e-mail e senha.' });
       }
 
-      const usuario = await usuarioService.buscarPorEmail(email);
+      let usuario = await usuarioService.buscarPorEmail(email);
+      if (!usuario && (email?.toLowerCase().includes('homemed.com'))) {
+        await usuarioService.garantirPerfisPadrao();
+        usuario = await usuarioService.buscarPorEmail(email);
+      }
+
       if (!usuario) {
         return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
       }
@@ -138,6 +143,16 @@ export const usuarioController = {
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Erro ao buscar usuários.', details: err.message });
+    }
+  },
+
+  async seedPadrao(req, res) {
+    try {
+      const perfis = await usuarioService.garantirPerfisPadrao();
+      return res.status(200).json({ message: 'Perfis de teste garantidos com sucesso!', perfis });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Erro ao semear perfis.', details: err.message });
     }
   }
 };
