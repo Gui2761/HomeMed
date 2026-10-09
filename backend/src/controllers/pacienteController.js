@@ -18,8 +18,8 @@ export const pacienteController = {
   async atualizarPerfil(req, res) {
     try {
       const usuarioId = req.usuarioId;
-      const { nome, telefone, email } = req.body;
-      const perfilAtualizado = await pacienteService.atualizarPerfil(usuarioId, { nome, telefone, email });
+      const { nome, telefone, email, foto_url } = req.body;
+      const perfilAtualizado = await pacienteService.atualizarPerfil(usuarioId, { nome, telefone, email, foto_url });
       return res.status(200).json({
         message: 'Perfil atualizado com sucesso!',
         perfil: perfilAtualizado

@@ -11,7 +11,9 @@ router.post('/redefinir-senha', usuarioController.redefinirSenha);
 router.get('/seed-usuarios', usuarioController.seedPadrao);
 router.post('/seed-usuarios', usuarioController.seedPadrao);
 
-// Rota protegida pelo middleware
+// Rotas protegidas pelo middleware
+router.get('/usuarios/me', verificarAutenticacao, usuarioController.obterPerfil);
+router.put('/usuarios/me', verificarAutenticacao, usuarioController.atualizarPerfil);
 router.get('/usuarios', verificarAutenticacao, usuarioController.listar);
 
 export default router;

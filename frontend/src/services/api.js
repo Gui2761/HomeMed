@@ -85,6 +85,23 @@ export const api = {
     return response.json();
   },
 
+  // Perfil Global Unificado (Paciente, Profissional e Admin)
+  async obterPerfilUsuario() {
+    const response = await fetch(`${API_URL}/usuarios/me`, {
+      headers: getHeaders()
+    });
+    return response.json();
+  },
+
+  async atualizarPerfilUsuario(dados) {
+    const response = await fetch(`${API_URL}/usuarios/me`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(dados)
+    });
+    return response.json();
+  },
+
   // Perfil do Paciente
   async obterPerfilPaciente() {
     const response = await fetch(`${API_URL}/pacientes/me`, {

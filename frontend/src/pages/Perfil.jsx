@@ -1,11 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import Navbar from '../components/Navbar';
 import './Perfil.css';
 
+// Avatares predefinidos em alta resolução por perfil
+const AVATARES_PRESET = {
+  profissional: [
+    { nome: 'Dr. Gabriel (Clínico)', url: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Dra. Mariana (Pediatra)', url: 'https://images.unsplash.com/photo-1594824813637-a169e5d4cb0f?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Dr. Lucas (Geriatra)', url: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Enf. Camila (Enfermagem)', url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Dra. Beatriz (Fisioterapia)', url: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300&h=300' }
+  ],
+  paciente: [
+    { nome: 'Ana Clara', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Juliana', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Carlos', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Helena', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Roberto', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300&h=300' }
+  ],
+  admin: [
+    { nome: 'Gestor HomeMed', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Diretoria Clínica', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Auditoria & Compliance', url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300&h=300' },
+    { nome: 'Coordenação Geral', url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=300&h=300' }
+  ]
+};
+
 export default function Perfil() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
   const [usuario, setUsuario] = useState(null);
   const [abaAtiva, setAbaAtiva] = useState('pessoal');
   const [perfil, setPerfil] = useState(null);
@@ -14,7 +40,13 @@ export default function Perfil() {
   const [historico, setHistorico] = useState([]);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
 
-  // Formulário do Paciente
+  // Foto de Perfil & Modal
+  const [modalFotoAberta, setModalFotoAberta] = useState(false);
+  const [fotoAtual, setFotoAtual] = useState('');
+  const [fotoPreview, setFotoPreview] = useState('');
+  const [urlCustomFoto, setUrlCustomFoto] = useState('');
+
+  // Formulário do Paciente / Geral
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -42,11 +74,21 @@ export default function Perfil() {
     disponivel_hoje: false
   });
 
+  // Formulário do Admin
+  const [adminData, setAdminData] = useState({
+    departamento: 'Gestão e Auditoria Central'
+  });
+
   useEffect(() => {
     try {
       const rawUser = localStorage.getItem('@HomeMed:usuario');
       if (rawUser) {
-        setUsuario(JSON.parse(rawUser));
+        const u = JSON.parse(rawUser);
+        setUsuario(u);
+        if (u.foto_url) {
+          setFotoAtual(u.foto_url);
+          setFotoPreview(u.foto_url);
+        }
       }
     } catch (e) {}
 
@@ -58,9 +100,9 @@ export default function Perfil() {
       setCarregando(true);
       const rawUser = localStorage.getItem('@HomeMed:usuario');
       const u = rawUser ? JSON.parse(rawUser) : null;
-      const isPro = u?.tipo_usuario === 'profissional';
+      const tipo = u?.tipo_usuario || 'paciente';
 
-      if (isPro) {
+      if (tipo === 'profissional') {
         const [dadosPro, consultas] = await Promise.all([
           api.obterMeuPerfilProfissional(),
           api.listarAgendamentos('concluidas')
@@ -68,6 +110,11 @@ export default function Perfil() {
 
         if (dadosPro && !dadosPro.error) {
           setPerfil(dadosPro);
+          const foto = dadosPro.foto_url || u?.foto_url || '';
+          if (foto) {
+            setFotoAtual(foto);
+            setFotoPreview(foto);
+          }
           setFormData({
             nome: dadosPro.nome || u?.nome || '',
             email: dadosPro.email || u?.email || '',
@@ -84,7 +131,29 @@ export default function Perfil() {
           });
         }
         setHistorico(Array.isArray(consultas) ? consultas : []);
+      } else if (tipo === 'admin') {
+        const [dadosAdmin, todasConsultas] = await Promise.all([
+          api.obterPerfilUsuario(),
+          api.listarAgendamentos('todas')
+        ]);
+
+        if (dadosAdmin && !dadosAdmin.error) {
+          setPerfil(dadosAdmin);
+          const foto = dadosAdmin.foto_url || u?.foto_url || '';
+          if (foto) {
+            setFotoAtual(foto);
+            setFotoPreview(foto);
+          }
+          setFormData({
+            nome: dadosAdmin.nome || u?.nome || '',
+            email: dadosAdmin.email || u?.email || '',
+            telefone: dadosAdmin.telefone || u?.telefone || '',
+            cpf: ''
+          });
+        }
+        setHistorico(Array.isArray(todasConsultas) ? todasConsultas : []);
       } else {
+        // Paciente
         const [dadosPerfil, consultasConcluidas] = await Promise.all([
           api.obterPerfilPaciente(),
           api.listarAgendamentos('concluidas')
@@ -92,6 +161,11 @@ export default function Perfil() {
 
         if (dadosPerfil && !dadosPerfil.error) {
           setPerfil(dadosPerfil);
+          const foto = dadosPerfil.foto_url || u?.foto_url || '';
+          if (foto) {
+            setFotoAtual(foto);
+            setFotoPreview(foto);
+          }
           setFormData({
             nome: dadosPerfil.nome || u?.nome || '',
             email: dadosPerfil.email || u?.email || '',
@@ -120,22 +194,101 @@ export default function Perfil() {
     }
   };
 
+  // Upload e Redimensionamento Local com HTML Canvas
+  const handleSelecionarArquivo = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Arquivo muito pesado. Escolha uma foto com até 8MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 360;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+        setFotoPreview(compressedDataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleConfirmarFoto = async () => {
+    const fotoFinal = fotoPreview || urlCustomFoto || fotoAtual;
+    setFotoAtual(fotoFinal);
+    setModalFotoAberta(false);
+
+    // Salva imediatamente no banco para conveniência
+    try {
+      const isPro = usuario?.tipo_usuario === 'profissional';
+      if (isPro) {
+        await api.salvarCredenciamento({ foto_url: fotoFinal });
+      } else {
+        await api.atualizarPerfilUsuario({ foto_url: fotoFinal });
+      }
+
+      // Atualiza localStorage e emite evento para a Navbar sincronizar instantaneamente
+      if (usuario) {
+        const uAtualizado = { ...usuario, foto_url: fotoFinal };
+        localStorage.setItem('@HomeMed:usuario', JSON.stringify(uAtualizado));
+        setUsuario(uAtualizado);
+        window.dispatchEvent(new Event('user-profile-updated'));
+        window.dispatchEvent(new Event('storage'));
+      }
+      setMensagemSucesso('Foto de perfil alterada e sincronizada com sucesso!');
+    } catch (err) {
+      console.error('Erro ao salvar foto:', err);
+    }
+  };
+
   const handleSalvarPerfil = async (e) => {
     e.preventDefault();
     setSalvando(true);
     setMensagemSucesso('');
 
-    const isPro = usuario?.tipo_usuario === 'profissional';
+    const tipo = usuario?.tipo_usuario || 'paciente';
 
     try {
-      if (isPro) {
+      const fotoParaSalvar = fotoAtual || fotoPreview || (usuario?.foto_url || '');
+
+      if (tipo === 'profissional') {
         await Promise.all([
-          api.atualizarPerfilPaciente({
+          api.atualizarPerfilUsuario({
             nome: formData.nome,
             telefone: formData.telefone,
-            email: formData.email
+            email: formData.email,
+            foto_url: fotoParaSalvar
           }),
           api.salvarCredenciamento({
+            nome: formData.nome,
+            telefone: formData.telefone,
+            email: formData.email,
+            foto_url: fotoParaSalvar,
             registro_profissional: proData.registro_profissional,
             especialidade_principal: proData.especialidade_principal,
             preco_base: parseFloat(proData.preco_base) || 180.00,
@@ -144,24 +297,42 @@ export default function Perfil() {
             disponivel_hoje: proData.disponivel_hoje
           })
         ]);
-        setMensagemSucesso('Dados do profissional atualizados com sucesso!');
+        setMensagemSucesso('Dados do profissional e foto salvos com sucesso!');
+      } else if (tipo === 'admin') {
+        await api.atualizarPerfilUsuario({
+          nome: formData.nome,
+          telefone: formData.telefone,
+          email: formData.email,
+          foto_url: fotoParaSalvar
+        });
+        setMensagemSucesso('Dados de administrador e foto salvos com sucesso!');
       } else {
+        // Paciente
         await Promise.all([
           api.atualizarPerfilPaciente({
             nome: formData.nome,
             telefone: formData.telefone,
-            email: formData.email
+            email: formData.email,
+            foto_url: fotoParaSalvar
           }),
           api.salvarEnderecoPaciente(enderecoData)
         ]);
-        setMensagemSucesso('Informações pessoais e endereço residencial salvos com sucesso!');
+        setMensagemSucesso('Informações pessoais, foto e endereço residencial salvos com sucesso!');
       }
 
       // Atualiza usuário no localStorage
       if (usuario) {
-        const uAtualizado = { ...usuario, nome: formData.nome, email: formData.email };
+        const uAtualizado = { 
+          ...usuario, 
+          nome: formData.nome, 
+          email: formData.email, 
+          telefone: formData.telefone,
+          foto_url: fotoParaSalvar 
+        };
         localStorage.setItem('@HomeMed:usuario', JSON.stringify(uAtualizado));
         setUsuario(uAtualizado);
+        window.dispatchEvent(new Event('user-profile-updated'));
+        window.dispatchEvent(new Event('storage'));
       }
 
       await carregarPerfil();
@@ -185,6 +356,15 @@ export default function Perfil() {
   };
 
   const tipo = usuario?.tipo_usuario || 'paciente';
+  const presetsDisponiveis = AVATARES_PRESET[tipo] || AVATARES_PRESET.paciente;
+
+  const fotoExibicao = fotoAtual || perfil?.foto_url || usuario?.foto_url || (
+    tipo === 'profissional'
+      ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300&h=300'
+      : tipo === 'admin'
+      ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300&h=300'
+      : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=300&h=300'
+  );
 
   return (
     <div className="app-container">
@@ -197,17 +377,40 @@ export default function Perfil() {
         {/* COLUNA ESQUERDA: Card de Usuário e Estatísticas */}
         <div className="profile-sidebar">
           <div className="user-card-main">
-            <div className="avatar-container">
+            <div 
+              className="avatar-container" 
+              onClick={() => { setFotoPreview(fotoExibicao); setModalFotoAberta(true); }}
+              title="Clique para alterar sua foto de perfil"
+            >
               <img 
-                src={perfil?.foto_url || (tipo === 'profissional' ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=200&h=200' : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200')} 
+                src={fotoExibicao} 
                 alt={perfil?.nome || usuario?.nome || 'Usuário'} 
               />
-              <span className="avatar-verified-check">✓</span>
+              <span className="avatar-edit-overlay-btn" title="Alterar Foto">
+                📷
+              </span>
+            </div>
+
+            <button 
+              type="button" 
+              className="btn-open-photo-modal"
+              onClick={() => { setFotoPreview(fotoExibicao); setModalFotoAberta(true); }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Alterar Foto de Perfil
+            </button>
+            
+            <div 
+              className="user-type-pill" 
+              style={{ 
+                background: tipo === 'admin' ? '#fee2e2' : tipo === 'profissional' ? '#ecfdf5' : '#e0f2fe', 
+                color: tipo === 'admin' ? '#b91c1c' : tipo === 'profissional' ? '#047857' : '#0369a1',
+                marginTop: '12px'
+              }}
+            >
+              {tipo === 'profissional' ? '👨‍⚕️ ESPECIALISTA HOMEMED' : tipo === 'admin' ? '🛡️ ADMINISTRADOR CENTRAL' : '👤 PACIENTE VERIFICADO'}
             </div>
             
-            <div className="user-type-pill" style={{ background: tipo === 'profissional' ? '#ecfdf5' : '#e0f2fe', color: tipo === 'profissional' ? '#047857' : '#0369a1' }}>
-              {tipo === 'profissional' ? '👨‍⚕️ ESPECIALISTA HOMEMED' : tipo === 'admin' ? '🛡️ ADMINISTRADOR' : '👤 PACIENTE VERIFICADO'}
-            </div>
             <h2>{formData.nome || usuario?.nome || 'Carregando perfil...'}</h2>
             
             <div className="user-location">
@@ -215,6 +418,8 @@ export default function Perfil() {
               <span>
                 {tipo === 'profissional'
                   ? 'Atendimento Domiciliar Regional'
+                  : tipo === 'admin'
+                  ? 'Sede Operacional HomeMed'
                   : perfil?.endereco?.cidade 
                   ? `${perfil.endereco.cidade}, ${perfil.endereco.uf}` 
                   : 'Endereço não cadastrado'}
@@ -224,7 +429,7 @@ export default function Perfil() {
             <div className="profile-buttons">
               <button className="btn-edit-profile" onClick={() => setAbaAtiva('pessoal')}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                Editar Perfil
+                Editar Informações
               </button>
               <button onClick={handleLogout} className="btn-logout">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
@@ -236,7 +441,7 @@ export default function Perfil() {
           <div className="stats-box">
             <div className="stat-item">
               <strong>{historico.length}</strong>
-              <span>VISITAS REALIZADAS</span>
+              <span>{tipo === 'admin' ? 'CONSULTAS TOTAIS' : 'VISITAS REALIZADAS'}</span>
             </div>
             <div className="stat-divider"></div>
             <div className="stat-item">
@@ -244,6 +449,11 @@ export default function Perfil() {
                 <>
                   <strong>R$ {parseFloat(proData.preco_base || 180).toFixed(0)}</strong>
                   <span>VALOR BASE</span>
+                </>
+              ) : tipo === 'admin' ? (
+                <>
+                  <strong>SuperAdmin</strong>
+                  <span>NÍVEL ACESSO</span>
                 </>
               ) : (
                 <>
@@ -263,14 +473,18 @@ export default function Perfil() {
               className={abaAtiva === 'pessoal' ? 'tab-btn active' : 'tab-btn'}
               onClick={() => setAbaAtiva('pessoal')}
             >
-              {tipo === 'profissional' ? 'Dados Profissionais & Honorários' : 'Informações & Endereço Residencial'}
+              {tipo === 'profissional' 
+                ? 'Dados Médicos & Honorários' 
+                : tipo === 'admin' 
+                ? 'Gestão de Administrador' 
+                : 'Informações & Endereço Residencial'}
             </button>
             <button 
               type="button"
               className={abaAtiva === 'historico' ? 'tab-btn active' : 'tab-btn'}
               onClick={() => setAbaAtiva('historico')}
             >
-              Histórico ({historico.length})
+              {tipo === 'admin' ? `Consultas Globais (${historico.length})` : `Histórico (${historico.length})`}
             </button>
             <button 
               type="button"
@@ -289,17 +503,17 @@ export default function Perfil() {
               </div>
             )}
 
-            {/* ABA 1: INFORMAÇÕES PESSOAIS / PROFISSIONAIS */}
+            {/* ABA 1: FORMULÁRIO DE EDIÇÃO */}
             {abaAtiva === 'pessoal' && (
               <form onSubmit={handleSalvarPerfil} className="profile-form">
                 
-                {/* DADOS CADASTRAIS */}
+                {/* DADOS CADASTRAIS GERAIS */}
                 <div className="form-section-card">
                   <div className="section-title-row">
-                    <h3>Identificação Oficial</h3>
-                    <span className="section-chip">Dados de Contato</span>
+                    <h3>Identificação & Contato</h3>
+                    <span className="section-chip">Editável</span>
                   </div>
-                  <p>Informações de identificação sob sigilo e criptografia.</p>
+                  <p>Mantenha seus dados sempre atualizados para contato e emissão de comprovantes.</p>
                   
                   <div className="form-grid-2">
                     <div className="field-group">
@@ -309,6 +523,7 @@ export default function Perfil() {
                         value={formData.nome} 
                         onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                         required
+                        placeholder="Seu nome completo"
                       />
                     </div>
                     <div className="field-group">
@@ -318,23 +533,25 @@ export default function Perfil() {
                         value={formData.telefone} 
                         onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                         required
+                        placeholder="(11) 98765-4321"
                       />
                     </div>
                   </div>
 
                   <div className="form-grid-2" style={{ marginTop: '14px' }}>
                     <div className="field-group">
-                      <label>E-mail Cadastrado</label>
+                      <label>E-mail de Login</label>
                       <input 
                         type="email" 
                         value={formData.email} 
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         required
+                        placeholder="seuemail@exemplo.com"
                       />
                     </div>
-                    {tipo === 'paciente' && (
+                    {tipo === 'paciente' ? (
                       <div className="field-group">
-                        <label>CPF (Mascarado por LGPD)</label>
+                        <label>CPF (Protegido por LGPD)</label>
                         <input 
                           type="text" 
                           value={formatarCpfLGPD(formData.cpf)} 
@@ -342,9 +559,60 @@ export default function Perfil() {
                           className="input-disabled"
                         />
                       </div>
+                    ) : (
+                      <div className="field-group">
+                        <label>Tipo de Conta</label>
+                        <input 
+                          type="text" 
+                          value={tipo === 'admin' ? 'Administrador do Sistema' : 'Profissional de Saúde'} 
+                          disabled
+                          className="input-disabled"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
+
+                {/* SE FOR ADMIN: GESTÃO E ATALHOS */}
+                {tipo === 'admin' && (
+                  <div className="form-section-card">
+                    <div className="section-title-row">
+                      <h3>Controles Administrativos</h3>
+                      <span className="section-chip" style={{ background: '#fef2f2', color: '#b91c1c' }}>Acesso Restrito</span>
+                    </div>
+                    <p>Funções exclusivas para supervisão da plataforma HomeMed.</p>
+
+                    <div className="field-group">
+                      <label>Departamento / Atribuição</label>
+                      <input 
+                        type="text" 
+                        value={adminData.departamento} 
+                        onChange={(e) => setAdminData({ ...adminData, departamento: e.target.value })}
+                        placeholder="Ex: Auditoria Médica & Compliance"
+                      />
+                    </div>
+
+                    <div className="admin-action-card">
+                      <div>
+                        <h4>Auditoria de Especialistas</h4>
+                        <p>Aprove ou reprove credenciamentos de médicos e enfermeiros pendentes.</p>
+                      </div>
+                      <Link to="/admin" className="btn-modal-save" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                        Acessar Auditoria
+                      </Link>
+                    </div>
+
+                    <div className="admin-action-card" style={{ background: '#f0f9ff', borderColor: '#bae6fd' }}>
+                      <div>
+                        <h4 style={{ color: '#0369a1' }}>Todas as Consultas</h4>
+                        <p style={{ color: '#075985' }}>Acompanhe o status de todos os atendimentos domiciliares em tempo real.</p>
+                      </div>
+                      <Link to="/consultas" className="btn-modal-save" style={{ textDecoration: 'none', display: 'inline-block', background: '#0284c7' }}>
+                        Ver Consultas
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
                 {/* SE FOR PROFISSIONAL: CAMPOS CLÍNICOS E HONORÁRIOS */}
                 {tipo === 'profissional' && (
@@ -361,7 +629,7 @@ export default function Perfil() {
                           type="text" 
                           value={proData.registro_profissional} 
                           onChange={(e) => setProData({ ...proData, registro_profissional: e.target.value })}
-                          placeholder="Ex: CRM-SP 123456"
+                          placeholder="Ex: CRM-SP 189420 ou COREN-SP 54321"
                           required
                         />
                       </div>
@@ -372,7 +640,7 @@ export default function Perfil() {
                           type="text" 
                           value={proData.especialidade_principal} 
                           onChange={(e) => setProData({ ...proData, especialidade_principal: e.target.value })}
-                          placeholder="Ex: Clínica Geral"
+                          placeholder="Ex: Clínica Geral & Geriatria"
                           required
                         />
                       </div>
@@ -395,7 +663,7 @@ export default function Perfil() {
                         <select 
                           value={proData.unidade_cobranca} 
                           onChange={(e) => setProData({ ...proData, unidade_cobranca: e.target.value })}
-                          style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
                         >
                           <option value="consulta">por consulta / visita</option>
                           <option value="hora">por hora de atendimento</option>
@@ -406,12 +674,26 @@ export default function Perfil() {
                     </div>
 
                     <div className="field-group" style={{ marginTop: '14px' }}>
-                      <label>Mini-Bio / Apresentação aos Pacientes</label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={proData.disponivel_hoje}
+                          onChange={(e) => setProData({ ...proData, disponivel_hoje: e.target.checked })}
+                          style={{ width: '18px', height: '18px' }}
+                        />
+                        <span style={{ fontWeight: '700', color: '#047857' }}>
+                          🟢 Estou disponível para atendimentos domiciliares hoje
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="field-group" style={{ marginTop: '14px' }}>
+                      <label>Mini-Bio / Apresentação Clínica</label>
                       <textarea 
                         rows="3"
                         value={proData.bio} 
                         onChange={(e) => setProData({ ...proData, bio: e.target.value })}
-                        placeholder="Descreva sua experiência clínica e procedimentos atendidos em domicílio."
+                        placeholder="Descreva sua experiência clínica, áreas de foco e metodologia humanizada."
                         style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
                       />
                     </div>
@@ -434,7 +716,7 @@ export default function Perfil() {
                           type="text" 
                           value={enderecoData.logradouro} 
                           onChange={(e) => setEnderecoData({ ...enderecoData, logradouro: e.target.value })}
-                          placeholder="Ex: Rua das Flores"
+                          placeholder="Ex: Av. Paulista"
                         />
                       </div>
                       <div className="field-group">
@@ -443,7 +725,7 @@ export default function Perfil() {
                           type="text" 
                           value={enderecoData.numero} 
                           onChange={(e) => setEnderecoData({ ...enderecoData, numero: e.target.value })}
-                          placeholder="123"
+                          placeholder="1000"
                         />
                       </div>
                     </div>
@@ -455,7 +737,7 @@ export default function Perfil() {
                           type="text" 
                           value={enderecoData.complemento} 
                           onChange={(e) => setEnderecoData({ ...enderecoData, complemento: e.target.value })}
-                          placeholder="Apto 45"
+                          placeholder="Apto 102"
                         />
                       </div>
                       <div className="field-group">
@@ -464,7 +746,7 @@ export default function Perfil() {
                           type="text" 
                           value={enderecoData.bairro} 
                           onChange={(e) => setEnderecoData({ ...enderecoData, bairro: e.target.value })}
-                          placeholder="Bairro"
+                          placeholder="Bela Vista"
                         />
                       </div>
                       <div className="field-group">
@@ -473,7 +755,7 @@ export default function Perfil() {
                           type="text" 
                           value={enderecoData.cidade} 
                           onChange={(e) => setEnderecoData({ ...enderecoData, cidade: e.target.value })}
-                          placeholder="Cidade"
+                          placeholder="São Paulo"
                         />
                       </div>
                       <div className="field-group">
@@ -481,7 +763,7 @@ export default function Perfil() {
                         <input 
                           type="text" 
                           value={enderecoData.uf} 
-                          onChange={(e) => setEnderecoData({ ...enderecoData, uf: e.target.value })}
+                          onChange={(e) => setEnderecoData({ ...enderecoData, uf: e.target.value.toUpperCase() })}
                           placeholder="SP" 
                           maxLength="2"
                         />
@@ -494,7 +776,7 @@ export default function Perfil() {
                         type="text" 
                         value={enderecoData.cep} 
                         onChange={(e) => setEnderecoData({ ...enderecoData, cep: e.target.value })}
-                        placeholder="00000-000"
+                        placeholder="01310-100"
                       />
                     </div>
                   </div>
@@ -516,10 +798,10 @@ export default function Perfil() {
             {abaAtiva === 'historico' && (
               <div className="history-tab-pane">
                 <div className="section-title-row">
-                  <h3>Histórico de Visitas Domiciliares</h3>
+                  <h3>{tipo === 'admin' ? 'Painel de Consultas Globais' : 'Histórico de Visitas Domiciliares'}</h3>
                   <span className="section-chip">Prontuário Integrado</span>
                 </div>
-                <p>Histórico completo de atendimentos presenciais concluídos.</p>
+                <p>Histórico completo de atendimentos presenciais registrados no sistema.</p>
                 
                 {historico.length === 0 ? (
                   <div className="empty-history-box">
@@ -537,12 +819,12 @@ export default function Perfil() {
                             <h4>{tipo === 'profissional' ? (h.paciente_nome || 'Paciente') : (h.profissional_nome || 'Profissional')}</h4>
                             <span className="history-pro-specialty">{h.especialidade_principal}</span>
                           </div>
-                          <span className="status-badge-done">Atendimento Concluído</span>
+                          <span className="status-badge-done">Atendimento Registrado</span>
                         </div>
                         
                         <div className="history-item-meta">
                           <span>📅 {new Date(h.data_hora_visita).toLocaleDateString('pt-BR')} às {new Date(h.data_hora_visita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span>💰 R$ {parseFloat(h.valor_total).toFixed(2).replace('.', ',')}</span>
+                          <span>💰 R$ {parseFloat(h.valor_total || 0).toFixed(2).replace('.', ',')}</span>
                         </div>
                       </div>
                     ))}
@@ -591,6 +873,111 @@ export default function Perfil() {
         </div>
 
       </div>
+
+      {/* MODAL DE ALTERAÇÃO DE FOTO */}
+      {modalFotoAberta && (
+        <div className="photo-modal-backdrop" onClick={() => setModalFotoAberta(false)}>
+          <div className="photo-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="photo-modal-header">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Alterar Foto de Perfil
+              </h3>
+              <button 
+                type="button" 
+                className="btn-close-modal" 
+                onClick={() => setModalFotoAberta(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="photo-modal-body">
+              {/* Preview Centralizado */}
+              <div className="photo-preview-center">
+                <img 
+                  src={fotoPreview || fotoExibicao} 
+                  alt="Pré-visualização" 
+                  className="photo-preview-large" 
+                />
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  Pré-visualização do seu avatar
+                </span>
+              </div>
+
+              <div className="photo-upload-options">
+                {/* Opção 1: Upload de Arquivo do Computador/Celular */}
+                <div 
+                  className="upload-file-box" 
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    accept="image/*" 
+                    onChange={handleSelecionarArquivo} 
+                  />
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>📁</div>
+                  <strong style={{ display: 'block', fontSize: '13px', color: '#0284c7' }}>
+                    Clique para selecionar uma foto do seu computador
+                  </strong>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    Formatos aceitos: JPG, PNG, WEBP (Redimensionamento automático)
+                  </span>
+                </div>
+
+                {/* Opção 2: Avatares Sugeridos */}
+                <div>
+                  <div className="preset-avatars-label">Ou escolha um avatar predefinido:</div>
+                  <div className="preset-avatars-grid">
+                    {presetsDisponiveis.map((av, index) => (
+                      <img 
+                        key={index}
+                        src={av.url} 
+                        alt={av.nome} 
+                        title={av.nome}
+                        className={`preset-avatar-item ${fotoPreview === av.url ? 'selected' : ''}`}
+                        onClick={() => setFotoPreview(av.url)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Opção 3: Link/URL Externa */}
+                <div className="field-group">
+                  <label>Ou cole o link direto de uma imagem (URL):</label>
+                  <input 
+                    type="url" 
+                    placeholder="https://exemplo.com/minha-foto.jpg"
+                    value={urlCustomFoto}
+                    onChange={(e) => {
+                      setUrlCustomFoto(e.target.value);
+                      if (e.target.value) setFotoPreview(e.target.value);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="photo-modal-footer">
+              <button 
+                type="button" 
+                className="btn-modal-cancel" 
+                onClick={() => setModalFotoAberta(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                className="btn-modal-save" 
+                onClick={handleConfirmarFoto}
+              >
+                Salvar Esta Foto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className="footer-main">

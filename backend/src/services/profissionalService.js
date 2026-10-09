@@ -10,6 +10,7 @@ export const profissionalService = {
         u.nome,
         u.email,
         u.telefone,
+        COALESCE(u.foto_url, '') as foto_url,
         p.registro_profissional,
         p.especialidade_principal,
         p.bio,
@@ -52,6 +53,7 @@ export const profissionalService = {
         u.nome,
         u.email,
         u.telefone,
+        COALESCE(u.foto_url, '') as foto_url,
         p.registro_profissional,
         p.especialidade_principal,
         p.bio,
@@ -77,6 +79,7 @@ export const profissionalService = {
         u.nome,
         u.email,
         u.telefone,
+        COALESCE(u.foto_url, '') as foto_url,
         p.registro_profissional,
         p.especialidade_principal,
         p.bio,
@@ -93,7 +96,18 @@ export const profissionalService = {
     return result.rows[0];
   },
 
-  async salvarCredenciamento(usuarioId, { registro_profissional, especialidade_principal, bio, preco_base, unidade_cobranca, disponivel_hoje }) {
+  async salvarCredenciamento(usuarioId, { registro_profissional, especialidade_principal, bio, preco_base, unidade_cobranca, disponivel_hoje, foto_url, nome, telefone, email }) {
+    if (foto_url || nome || telefone || email) {
+      await pool.query(`
+        UPDATE usuarios 
+        SET foto_url = COALESCE($1, foto_url),
+            nome = COALESCE($2, nome),
+            telefone = COALESCE($3, telefone),
+            email = COALESCE($4, email)
+        WHERE id = $5
+      `, [foto_url || null, nome || null, telefone || null, email ? email.trim().toLowerCase() : null, usuarioId]);
+    }
+
     const check = await pool.query('SELECT id FROM profissionais WHERE usuario_id = $1', [usuarioId]);
     if (check.rows.length > 0) {
       const proId = check.rows[0].id;

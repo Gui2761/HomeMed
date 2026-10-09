@@ -84,6 +84,7 @@ async function initPostgresSchema() {
         nome VARCHAR(255) NOT NULL,
         telefone VARCHAR(50),
         tipo_usuario VARCHAR(50) NOT NULL CHECK (tipo_usuario IN ('paciente', 'profissional', 'admin')),
+        foto_url TEXT,
         criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
       `CREATE TABLE IF NOT EXISTS pacientes (
@@ -154,6 +155,12 @@ async function initPostgresSchema() {
       await poolInstance.query(ddl);
     }
 
+    try {
+      await poolInstance.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto_url TEXT;');
+    } catch (e) {
+      // Ignora caso coluna já exista ou permissão
+    }
+
     console.log('[DB-PG] Schema do PostgreSQL verificado com sucesso.');
     dbInitialized = true;
   } catch (err) {
@@ -173,6 +180,7 @@ function initSqliteSchema() {
       nome TEXT NOT NULL,
       telefone TEXT,
       tipo_usuario TEXT NOT NULL CHECK (tipo_usuario IN ('paciente', 'profissional', 'admin')),
+      foto_url TEXT,
       criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -245,6 +253,12 @@ function initSqliteSchema() {
       comentario TEXT
     );
   `);
+
+  try {
+    sqliteDb.exec('ALTER TABLE usuarios ADD COLUMN foto_url TEXT;');
+  } catch (e) {
+    // Coluna já existe
+  }
 
   console.log('[DB-SQLite] Schema local SQLite verificado com sucesso.');
 }

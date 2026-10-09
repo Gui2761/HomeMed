@@ -10,9 +10,9 @@ export const pacienteService = {
         u.email,
         u.telefone,
         u.tipo_usuario,
+        COALESCE(u.foto_url, p.foto_url) as foto_url,
         p.id as paciente_id,
-        p.cpf,
-        p.foto_url
+        p.cpf
       FROM usuarios u
       LEFT JOIN pacientes p ON p.usuario_id = u.id
       WHERE u.id = $1
@@ -58,15 +58,21 @@ export const pacienteService = {
     };
   },
 
-  async atualizarPerfil(usuarioId, { nome, telefone, email }) {
+  async atualizarPerfil(usuarioId, { nome, telefone, email, foto_url }) {
     const sql = `
       UPDATE usuarios 
       SET nome = COALESCE($1, nome), 
           telefone = COALESCE($2, telefone), 
-          email = COALESCE($3, email)
-      WHERE id = $4
+          email = COALESCE($3, email),
+          foto_url = COALESCE($4, foto_url)
+      WHERE id = $5
     `;
-    await pool.query(sql, [nome, telefone, email, usuarioId]);
+    await pool.query(sql, [nome, telefone, email, foto_url, usuarioId]);
+    if (foto_url) {
+      try {
+        await pool.query('UPDATE pacientes SET foto_url = $1 WHERE usuario_id = $2', [foto_url, usuarioId]);
+      } catch (e) {}
+    }
     return this.obterPerfil(usuarioId);
   },
 

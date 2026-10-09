@@ -351,7 +351,7 @@ export default function Home() {
               <div className="featured-card">
                 <div className="featured-img-container">
                   <img 
-                    src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=600&h=700" 
+                    src={destaque.foto_url || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600&h=700"} 
                     alt={destaque.nome} 
                     className="featured-img" 
                   />
@@ -435,13 +435,15 @@ export default function Home() {
                     <div className="card-img-wrapper">
                       <img 
                         src={
-                          pro.especialidade_principal?.includes('Enferm') 
-                            ? 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400&h=300'
-                            : pro.especialidade_principal?.includes('Cuidador')
-                            ? 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=400&h=300'
-                            : pro.especialidade_principal?.includes('Médic') || pro.especialidade_principal?.includes('Clínic')
-                            ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400&h=300'
-                            : 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=400&h=300'
+                          pro.foto_url || (
+                            pro.especialidade_principal?.includes('Enferm') 
+                              ? 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400&h=300'
+                              : pro.especialidade_principal?.includes('Cuidador')
+                              ? 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=400&h=300'
+                              : pro.especialidade_principal?.includes('Médic') || pro.especialidade_principal?.includes('Clínic')
+                              ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400&h=300'
+                              : 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=400&h=300'
+                          )
                         } 
                         alt={pro.nome} 
                       />

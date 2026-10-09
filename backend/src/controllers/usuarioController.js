@@ -1,4 +1,6 @@
 import { usuarioService } from '../services/usuarioService.js';
+import { pacienteService } from '../services/pacienteService.js';
+import { profissionalService } from '../services/profissionalService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/database.js';
@@ -12,6 +14,7 @@ export const usuarioController = {
         nome, 
         telefone, 
         tipo_usuario, 
+        foto_url,
         cpf, 
         registro_profissional, 
         especialidade_principal, 
@@ -35,6 +38,7 @@ export const usuarioController = {
         nome,
         telefone,
         tipo_usuario,
+        foto_url,
         cpf,
         registro_profissional,
         especialidade_principal,
@@ -98,7 +102,9 @@ export const usuarioController = {
           id: usuario.id,
           nome: usuario.nome,
           email: usuario.email,
-          tipo_usuario: usuario.tipo_usuario
+          telefone: usuario.telefone,
+          tipo_usuario: usuario.tipo_usuario,
+          foto_url: usuario.foto_url
         }
       });
     } catch (err) {
@@ -153,6 +159,51 @@ export const usuarioController = {
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Erro ao semear perfis.', details: err.message });
+    }
+  },
+
+  async obterPerfil(req, res) {
+    try {
+      const usuarioId = req.usuarioId;
+      const usuario = await usuarioService.buscarPorId(usuarioId);
+      if (!usuario) {
+        return res.status(404).json({ error: 'Usuário não encontrado.' });
+      }
+
+      let perfilEspecifico = null;
+      if (usuario.tipo_usuario === 'paciente') {
+        perfilEspecifico = await pacienteService.obterPerfil(usuarioId);
+      } else if (usuario.tipo_usuario === 'profissional') {
+        perfilEspecifico = await profissionalService.obterPorId(usuarioId);
+      }
+
+      return res.status(200).json({
+        ...usuario,
+        detalhes: perfilEspecifico
+      });
+    } catch (err) {
+      console.error('[ERRO OBTER PERFIL]', err);
+      return res.status(500).json({ error: 'Erro ao obter dados do perfil.', details: err.message });
+    }
+  },
+
+  async atualizarPerfil(req, res) {
+    try {
+      const usuarioId = req.usuarioId;
+      const { nome, telefone, email, foto_url } = req.body;
+
+      const atualizado = await usuarioService.atualizarUsuario(usuarioId, { nome, telefone, email, foto_url });
+      if (!atualizado) {
+        return res.status(404).json({ error: 'Usuário não encontrado.' });
+      }
+
+      return res.status(200).json({
+        message: 'Perfil atualizado com sucesso!',
+        usuario: atualizado
+      });
+    } catch (err) {
+      console.error('[ERRO ATUALIZAR PERFIL]', err);
+      return res.status(500).json({ error: 'Erro ao salvar alterações do perfil.', details: err.message });
     }
   }
 };
