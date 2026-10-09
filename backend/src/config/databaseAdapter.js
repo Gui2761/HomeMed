@@ -1,8 +1,6 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import dotenv from 'dotenv';
-import crypto from 'crypto';
-import bcrypt from 'bcrypt';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -49,15 +47,14 @@ if (!process.env.VERCEL) {
   }
 }
 
-// 3. Schema & Seed para PostgreSQL
+// 3. Schema DDL para PostgreSQL
 async function initPostgresSchema() {
   if (!pgPool) return;
   try {
-    // Tenta habilitar extensão uuid-ossp se disponível (opcional)
     try {
       await pgPool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
     } catch (e) {
-      // Ignora se não tiver permissão de superusuário na cloud
+      // Ignora caso superuser não esteja disponível na nuvem
     }
 
     await pgPool.query(`
@@ -141,143 +138,13 @@ async function initPostgresSchema() {
       );
     `);
 
-    // Verifica se precisa de dados de demonstração
-    const checkUsers = await pgPool.query('SELECT COUNT(*) as total FROM usuarios');
-    const totalUsers = parseInt(checkUsers.rows[0]?.total || 0, 10);
-
-    if (totalUsers === 0) {
-      console.log('[DB-PG] Inserindo dados iniciais de demonstração no PostgreSQL...');
-      const senhaHash = await bcrypt.hash('123456', 10);
-
-      // 1. Paciente Ricardo Santos
-      const uPacId = crypto.randomUUID();
-      const pacId = crypto.randomUUID();
-      await pgPool.query(
-        'INSERT INTO usuarios (id, email, senha_hash, nome, telefone, tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6)',
-        [uPacId, 'ricardo.santos@email.com', senhaHash, 'Ricardo Santos', '(11) 98765-4321', 'paciente']
-      );
-
-      await pgPool.query(
-        'INSERT INTO pacientes (id, usuario_id, cpf, foto_url) VALUES ($1, $2, $3, $4)',
-        [pacId, uPacId, '123.456.789-00', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200']
-      );
-
-      const endId = crypto.randomUUID();
-      await pgPool.query(
-        'INSERT INTO enderecos (id, paciente_id, logradouro, numero, complemento, bairro, cidade, uf, cep, padrao) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-        [endId, pacId, 'Rua das Flores', '123', 'Apto 45', 'Bela Vista', 'São Paulo', 'SP', '01310-100', true]
-      );
-
-      // 2. Profissionais
-      const proList = [
-        {
-          nome: 'Dra. Juliana Silva',
-          email: 'juliana.silva@homemed.com',
-          telefone: '(11) 99876-1122',
-          registro: 'CREFITO-3/12345-F',
-          especialidade: 'Fisioterapia Neurológica e Motora',
-          bio: 'Especialista em reabilitação motora com mais de 10 anos de experiência em atendimento domiciliar.',
-          preco: 180.00,
-          unidade: 'sessão',
-          nota: 4.9,
-          verificado: true,
-          disponivel: true,
-          foto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=400&h=500'
-        },
-        {
-          nome: 'Carlos Mendes',
-          email: 'carlos.mendes@homemed.com',
-          telefone: '(11) 99123-3344',
-          registro: 'COREN-SP 45678',
-          especialidade: 'Enfermeiro Padrão',
-          bio: 'Cuidados pós-operatórios, administração de medicamentos e curativos especiais.',
-          preco: 150.00,
-          unidade: 'turno',
-          nota: 4.8,
-          verificado: true,
-          disponivel: false,
-          foto: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300&h=200'
-        },
-        {
-          nome: 'Marta Oliveira',
-          email: 'marta.oliveira@homemed.com',
-          telefone: '(11) 99555-6677',
-          registro: 'CBO 5162-10',
-          especialidade: 'Cuidadora de Idosos',
-          bio: 'Acompanhamento domiciliar, auxílio na mobilidade e refeições restritas.',
-          preco: 90.00,
-          unidade: 'hora',
-          nota: 5.0,
-          verificado: true,
-          disponivel: true,
-          foto: 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=300&h=200'
-        },
-        {
-          nome: 'Dr. Ricardo Almeida',
-          email: 'ricardo.almeida@homemed.com',
-          telefone: '(11) 98888-9900',
-          registro: 'CRM-SP 98765',
-          especialidade: 'Médico Clínico Geral',
-          bio: 'Consultas domiciliares para avaliação geral, check-up e orientação médica familiar.',
-          preco: 250.00,
-          unidade: 'consulta',
-          nota: 4.7,
-          verificado: true,
-          disponivel: false,
-          foto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300&h=200'
-        }
-      ];
-
-      const createdPros = [];
-      for (const pro of proList) {
-        const uProId = crypto.randomUUID();
-        const pId = crypto.randomUUID();
-
-        await pgPool.query(
-          'INSERT INTO usuarios (id, email, senha_hash, nome, telefone, tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6)',
-          [uProId, pro.email, senhaHash, pro.nome, pro.telefone, 'profissional']
-        );
-
-        await pgPool.query(
-          'INSERT INTO profissionais (id, usuario_id, registro_profissional, especialidade_principal, bio, preco_base, unidade_cobranca, nota_media, verificado, disponivel_hoje) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-          [pId, uProId, pro.registro, pro.especialidade, pro.bio, pro.preco, pro.unidade, pro.nota, pro.verificado, pro.disponivel]
-        );
-
-        createdPros.push({ uProId, pId, ...pro });
-      }
-
-      // 3. Conversa de Exemplo
-      const draJuliana = createdPros[0];
-      const convId = crypto.randomUUID();
-      await pgPool.query(
-        'INSERT INTO conversas (id, paciente_id, profissional_id, ultima_mensagem_em) VALUES ($1, $2, $3, $4)',
-        [convId, pacId, draJuliana.pId, new Date().toISOString()]
-      );
-
-      await pgPool.query(
-        'INSERT INTO mensagens (id, conversa_id, remetente_id, conteudo, tipo_mensagem, lida, enviado_em) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [crypto.randomUUID(), convId, uPacId, 'Olá, Dra. Juliana! Gostaria de agendar uma sessão domiciliar.', 'texto', true, new Date(Date.now() - 3600000).toISOString()]
-      );
-
-      // 4. Agendamento
-      const agendId = crypto.randomUUID();
-      const dataAmanha = new Date();
-      dataAmanha.setDate(dataAmanha.getDate() + 1);
-      dataAmanha.setHours(14, 30, 0, 0);
-
-      await pgPool.query(
-        'INSERT INTO agendamentos (id, paciente_id, profissional_id, endereco_id, data_hora_visita, valor_total, status) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [agendId, pacId, draJuliana.pId, endId, dataAmanha.toISOString(), 180.00, 'confirmado']
-      );
-
-      console.log('[DB-PG] Dados iniciais do PostgreSQL inseridos com sucesso!');
-    }
+    console.log('[DB-PG] Schema do PostgreSQL verificado com sucesso.');
   } catch (err) {
     console.error('[DB-PG] Erro ao inicializar schema do PostgreSQL:', err.message);
   }
 }
 
-// 4. Schema & Seed para SQLite Local
+// 4. Schema DDL para SQLite Local
 function initSqliteSchema() {
   if (!sqliteDb) return;
   sqliteDb.exec(`
@@ -361,143 +228,7 @@ function initSqliteSchema() {
     );
   `);
 
-  seedSqliteInitialData();
-}
-
-async function seedSqliteInitialData() {
-  if (!sqliteDb) return;
-  const count = sqliteDb.prepare('SELECT COUNT(*) as total FROM usuarios').get();
-  if (count && count.total > 0) return;
-
-  console.log('[DB-SQLite] Povoando banco local com dados de demonstração...');
-  const senhaHash = await bcrypt.hash('123456', 10);
-
-  const uPacId = crypto.randomUUID();
-  const pacId = crypto.randomUUID();
-  sqliteDb.prepare(`
-    INSERT INTO usuarios (id, email, senha_hash, nome, telefone, tipo_usuario)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(uPacId, 'ricardo.santos@email.com', senhaHash, 'Ricardo Santos', '(11) 98765-4321', 'paciente');
-
-  sqliteDb.prepare(`
-    INSERT INTO pacientes (id, usuario_id, cpf, foto_url)
-    VALUES (?, ?, ?, ?)
-  `).run(pacId, uPacId, '123.456.789-00', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200');
-
-  const endId = crypto.randomUUID();
-  sqliteDb.prepare(`
-    INSERT INTO enderecos (id, paciente_id, logradouro, numero, complemento, bairro, cidade, uf, cep, padrao)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(endId, pacId, 'Rua das Flores', '123', 'Apto 45', 'Bela Vista', 'São Paulo', 'SP', '01310-100', 1);
-
-  const proList = [
-    {
-      nome: 'Dra. Juliana Silva',
-      email: 'juliana.silva@homemed.com',
-      telefone: '(11) 99876-1122',
-      registro: 'CREFITO-3/12345-F',
-      especialidade: 'Fisioterapia Neurológica e Motora',
-      bio: 'Especialista em reabilitação motora com mais de 10 anos de experiência em atendimento domiciliar.',
-      preco: 180.00,
-      unidade: 'sessão',
-      nota: 4.9,
-      verificado: 1,
-      disponivel: 1,
-      foto: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=400&h=500'
-    },
-    {
-      nome: 'Carlos Mendes',
-      email: 'carlos.mendes@homemed.com',
-      telefone: '(11) 99123-3344',
-      registro: 'COREN-SP 45678',
-      especialidade: 'Enfermeiro Padrão',
-      bio: 'Cuidados pós-operatórios, administração de medicamentos e curativos.',
-      preco: 150.00,
-      unidade: 'turno',
-      nota: 4.8,
-      verificado: 1,
-      disponivel: 0,
-      foto: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300&h=200'
-    },
-    {
-      nome: 'Marta Oliveira',
-      email: 'marta.oliveira@homemed.com',
-      telefone: '(11) 99555-6677',
-      registro: 'CBO 5162-10',
-      especialidade: 'Cuidadora de Idosos',
-      bio: 'Acompanhamento domiciliar, auxílio na mobilidade e refeições restritas.',
-      preco: 90.00,
-      unidade: 'hora',
-      nota: 5.0,
-      verificado: 1,
-      disponivel: 1,
-      foto: 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=300&h=200'
-    },
-    {
-      nome: 'Dr. Ricardo Almeida',
-      email: 'ricardo.almeida@homemed.com',
-      telefone: '(11) 98888-9900',
-      registro: 'CRM-SP 98765',
-      especialidade: 'Médico Clínico Geral',
-      bio: 'Consultas domiciliares para avaliação geral e check-up preventivo.',
-      preco: 250.00,
-      unidade: 'consulta',
-      nota: 4.7,
-      verificado: 1,
-      disponivel: 0,
-      foto: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300&h=200'
-    }
-  ];
-
-  const createdPros = [];
-  for (const pro of proList) {
-    const uProId = crypto.randomUUID();
-    const pId = crypto.randomUUID();
-
-    sqliteDb.prepare(`
-      INSERT INTO usuarios (id, email, senha_hash, nome, telefone, tipo_usuario)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(uProId, pro.email, senhaHash, pro.nome, pro.telefone, 'profissional');
-
-    sqliteDb.prepare(`
-      INSERT INTO profissionais (id, usuario_id, registro_profissional, especialidade_principal, bio, preco_base, unidade_cobranca, nota_media, verificado, disponivel_hoje)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(pId, uProId, pro.registro, pro.especialidade, pro.bio, pro.preco, pro.unidade, pro.nota, pro.verificado, pro.disponivel);
-
-    createdPros.push({ uProId, pId, ...pro });
-  }
-
-  const draJuliana = createdPros[0];
-  const convId = crypto.randomUUID();
-  sqliteDb.prepare(`
-    INSERT INTO conversas (id, paciente_id, profissional_id, ultima_mensagem_em)
-    VALUES (?, ?, ?, ?)
-  `).run(convId, pacId, draJuliana.pId, new Date().toISOString());
-
-  sqliteDb.prepare(`
-    INSERT INTO mensagens (id, conversa_id, remetente_id, conteudo, tipo_mensagem, lida, enviado_em)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    crypto.randomUUID(),
-    convId,
-    uPacId,
-    'Olá, Dra. Juliana! Gostaria de agendar uma sessão de fisioterapia motora domiciliar para amanhã à tarde.',
-    'texto',
-    1,
-    new Date(Date.now() - 3600000).toISOString()
-  );
-
-  const agendConfirmadoId = crypto.randomUUID();
-  const dataAmanha = new Date();
-  dataAmanha.setDate(dataAmanha.getDate() + 1);
-  dataAmanha.setHours(14, 30, 0, 0);
-
-  sqliteDb.prepare(`
-    INSERT INTO agendamentos (id, paciente_id, profissional_id, endereco_id, data_hora_visita, valor_total, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(agendConfirmadoId, pacId, draJuliana.pId, endId, dataAmanha.toISOString(), 180.00, 'confirmado');
-
-  console.log('[DB-SQLite] Dados de demonstração inicial inseridos com sucesso!');
+  console.log('[DB-SQLite] Schema local SQLite verificado com sucesso.');
 }
 
 // Inicialização sob demanda ou na carga

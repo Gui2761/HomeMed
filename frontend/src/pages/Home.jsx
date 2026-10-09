@@ -224,10 +224,10 @@ export default function Home() {
           </div>
         ) : profissionais.length === 0 ? (
           <div className="empty-state">
-            <p>Nenhum profissional encontrado para os filtros selecionados.</p>
-            <button className="btn-outline" onClick={() => { setCategoriaAtiva(''); setTermo(''); carregarDados('', ''); }}>
-              Limpar Filtros
-            </button>
+            <p>Nenhum profissional credenciado encontrado no momento.</p>
+            <Link to="/credenciamento" className="btn-primary" style={{ marginTop: '12px', display: 'inline-block' }}>
+              Cadastre-se como Profissional
+            </Link>
           </div>
         ) : (
           <div className="cards-grid">
@@ -236,17 +236,17 @@ export default function Home() {
                 <div className="card-img-wrapper">
                   <img 
                     src={
-                      pro.especialidade_principal.includes('Enferm') 
+                      pro.especialidade_principal?.includes('Enferm') 
                         ? 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400&h=300'
-                        : pro.especialidade_principal.includes('Cuidador')
+                        : pro.especialidade_principal?.includes('Cuidador')
                         ? 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=400&h=300'
-                        : pro.especialidade_principal.includes('Médic') || pro.especialidade_principal.includes('Clínic')
+                        : pro.especialidade_principal?.includes('Médic') || pro.especialidade_principal?.includes('Clínic')
                         ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400&h=300'
                         : 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=400&h=300'
                     } 
                     alt={pro.nome} 
                   />
-                  {pro.disponivel_hoje === 1 && (
+                  {Boolean(pro.disponivel_hoje) && (
                     <span className="card-badge-available">
                       <span className="status-indicator"></span>
                       Disponível Hoje

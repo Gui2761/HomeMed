@@ -16,13 +16,6 @@ export default function Login() {
     if (erro) setErro('');
   };
 
-  const handlePreencherDemo = () => {
-    setFormData({
-      email: 'ricardo.santos@email.com',
-      senha: 'password123'
-    });
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setCarregando(true);
@@ -36,11 +29,11 @@ export default function Login() {
         localStorage.setItem('@HomeMed:usuario', JSON.stringify(resposta.usuario));
         navigate('/home');
       } else {
-        setErro(resposta.error || 'Credenciais inválidas. Tente novamente.');
+        setErro(resposta.error || 'Credenciais inválidas. Verifique seu e-mail e senha.');
       }
     } catch (error) {
       console.error('Erro ao fazer login:', error);
-      setErro('Erro ao conectar com o servidor. Verifique se a API está online.');
+      setErro('Erro ao conectar com o servidor. Verifique sua conexão com a internet.');
     } finally {
       setCarregando(false);
     }
@@ -74,10 +67,10 @@ export default function Login() {
               <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
               <input 
                 type="email" 
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="exemplo@email.com" 
+                name="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                placeholder="seu.email@dominio.com" 
                 required 
               />
             </div>
@@ -86,24 +79,24 @@ export default function Login() {
           <div className="input-field-group">
             <div className="label-row">
               <label>Sua Senha</label>
-              <a href="#" className="link-forgot" onClick={(e) => { e.preventDefault(); alert('Em ambiente de teste, utilize as credenciais padrão do paciente Ricardo Santos.'); }}>
+              <Link to="/cadastro" className="link-forgot">
                 Esqueceu a senha?
-              </a>
+              </Link>
             </div>
             <div className="input-box">
               <svg className="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               <input 
                 type={mostrarSenha ? "text" : "password"} 
-                name="senha"
-                value={formData.senha}
-                onChange={handleChange}
+                name="senha" 
+                value={formData.senha} 
+                onChange={handleChange} 
                 placeholder="••••••••" 
-                required
+                required 
               />
               <button 
                 type="button" 
-                className="btn-toggle-eye"
-                onClick={() => setMostrarSenha(!mostrarSenha)}
+                className="btn-toggle-eye" 
+                onClick={() => setMostrarSenha(!mostrarSenha)} 
                 aria-label="Mostrar/ocultar senha"
               >
                 {mostrarSenha ? (
@@ -126,12 +119,6 @@ export default function Login() {
             )}
           </button>
         </form>
-
-        {/* Demo Fast Access Button */}
-        <div className="demo-credentials-pill" onClick={handlePreencherDemo}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          <span>Preencher Dados de Demonstração (Ricardo Santos)</span>
-        </div>
 
         <div className="login-divider">
           <span>OU</span>
