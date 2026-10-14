@@ -40,6 +40,7 @@ export default function Perfil() {
   const [salvando, setSalvando] = useState(false);
   const [historico, setHistorico] = useState([]);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
+  const [dicaEdicao, setDicaEdicao] = useState('');
   const [erroTelefone, setErroTelefone] = useState('');
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [statusCep, setStatusCep] = useState('');
@@ -49,6 +50,22 @@ export default function Perfil() {
   const [fotoAtual, setFotoAtual] = useState('');
   const [fotoPreview, setFotoPreview] = useState('');
   const [urlCustomFoto, setUrlCustomFoto] = useState('');
+
+  const handleEditarInformacoes = () => {
+    setAbaAtiva('pessoal');
+    setMensagemSucesso('');
+    setDicaEdicao('✏️ Modo de edição ativado! Você já pode editar seus dados abaixo e clicar em "Salvar Informações" ao final.');
+    setTimeout(() => {
+      const inputNome = document.getElementById('input-nome-completo');
+      if (inputNome) {
+        inputNome.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputNome.focus();
+        inputNome.classList.add('input-highlight-pulse');
+        setTimeout(() => inputNome.classList.remove('input-highlight-pulse'), 2500);
+      }
+    }, 100);
+    setTimeout(() => setDicaEdicao(''), 8000);
+  };
 
   // Formulário do Paciente / Geral
   const [formData, setFormData] = useState({
@@ -434,6 +451,10 @@ export default function Perfil() {
               <img 
                 src={fotoExibicao} 
                 alt={perfil?.nome || usuario?.nome || 'Usuário'} 
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nome || usuario?.nome || 'R')}&background=0284c7&color=fff&size=200&bold=true`;
+                }}
               />
               <span className="avatar-edit-overlay-btn" title="Alterar Foto">
                 📷
@@ -476,7 +497,12 @@ export default function Perfil() {
             </div>
 
             <div className="profile-buttons">
-              <button className="btn-edit-profile" onClick={() => setAbaAtiva('pessoal')}>
+              <button 
+                type="button"
+                className="btn-edit-profile" 
+                onClick={handleEditarInformacoes}
+                title="Clique para ir direto aos campos de edição de perfil"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 Editar Informações
               </button>
@@ -545,6 +571,13 @@ export default function Perfil() {
           </div>
 
           <div className="tab-pane-content">
+            {dicaEdicao && (
+              <div style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>✏️</span>
+                <span>{dicaEdicao}</span>
+              </div>
+            )}
+
             {mensagemSucesso && (
               <div className="profile-alert-success">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -554,7 +587,7 @@ export default function Perfil() {
 
             {/* ABA 1: FORMULÁRIO DE EDIÇÃO */}
             {abaAtiva === 'pessoal' && (
-              <form onSubmit={handleSalvarPerfil} className="profile-form">
+              <form onSubmit={handleSalvarPerfil} id="form-perfil-edit" className="profile-form">
                 
                 {/* DADOS CADASTRAIS GERAIS */}
                 <div className="form-section-card">
@@ -568,6 +601,7 @@ export default function Perfil() {
                     <div className="field-group">
                       <label>Nome Completo</label>
                       <input 
+                        id="input-nome-completo"
                         type="text" 
                         value={formData.nome} 
                         onChange={(e) => setFormData({ ...formData, nome: e.target.value })}

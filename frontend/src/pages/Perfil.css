@@ -782,6 +782,14 @@
   to { transform: scale(1); opacity: 1; }
 }
 
+.input-highlight-pulse {
+  border-color: #0284c7 !important;
+  outline: 3px solid #38bdf8 !important;
+  box-shadow: 0 0 15px rgba(2, 132, 199, 0.45) !important;
+  background-color: #f0f9ff !important;
+  transition: all 0.3s ease;
+}
+
 @media (max-width: 900px) {
   .profile-layout {
     grid-template-columns: 1fr;
