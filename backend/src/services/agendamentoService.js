@@ -19,12 +19,14 @@ export const agendamentoService = {
         uPro.nome as profissional_nome,
         uPro.email as profissional_email,
         uPro.telefone as profissional_telefone,
+        COALESCE(uPro.foto_url, '') as profissional_foto,
         pro.especialidade_principal,
         pro.preco_base,
         pro.unidade_cobranca,
         pro.nota_media,
         uPac.nome as paciente_nome,
         uPac.telefone as paciente_telefone,
+        COALESCE(uPac.foto_url, pac.foto_url, '') as paciente_foto,
         e.logradouro,
         e.numero,
         e.complemento,
@@ -42,9 +44,14 @@ export const agendamentoService = {
       JOIN usuarios uPac ON uPac.id = pac.usuario_id
       LEFT JOIN enderecos e ON e.id = a.endereco_id
       LEFT JOIN avaliacoes av ON av.agendamento_id = a.id
-      WHERE (pac.usuario_id = $1 OR pro.usuario_id = $1)
     `;
-    const params = [usuarioId];
+    const params = [];
+    if (tipo === 'admin') {
+      sql += ` WHERE 1=1`;
+    } else {
+      params.push(usuarioId);
+      sql += ` WHERE (pac.usuario_id = $1 OR pro.usuario_id = $1)`;
+    }
 
     if (statusFiltro && statusFiltro !== 'todas') {
       if (statusFiltro === 'proximas') {

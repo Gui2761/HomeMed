@@ -16,6 +16,13 @@ export default function Home() {
   const [profissionais, setProfissionais] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
+  // Estados do Modal de Detalhes & Agendamento
+  const [modalPro, setModalPro] = useState(null);
+  const amanhaIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const [dataVisitaModal, setDataVisitaModal] = useState(amanhaIso);
+  const [horaVisitaModal, setHoraVisitaModal] = useState('14:00');
+  const [agendandoModal, setAgendandoModal] = useState(false);
+
   // Estados do Médico/Profissional
   const [meuPerfilPro, setMeuPerfilPro] = useState(null);
   const [disponivelHoje, setDisponivelHoje] = useState(false);
@@ -123,6 +130,42 @@ export default function Home() {
     } catch (err) {
       console.error('Erro ao abrir conversa:', err);
       navigate('/mensagens');
+    }
+  };
+
+  const handleConfirmarAgendamentoModal = async () => {
+    if (!modalPro || agendandoModal) return;
+    if (!usuario) {
+      alert('Por favor, faça login ou cadastre-se para agendar uma visita domiciliar.');
+      navigate('/login');
+      return;
+    }
+    setAgendandoModal(true);
+    try {
+      const dataHoraIso = `${dataVisitaModal}T${horaVisitaModal}:00`;
+      await api.criarAgendamento({
+        profissional_id: modalPro.id,
+        valor_total: modalPro.preco_base || 180.00,
+        data_hora_visita: dataHoraIso
+      });
+
+      const [ano, mes, dia] = dataVisitaModal.split('-');
+      const dataFormatada = `${dia}/${mes}/${ano}`;
+
+      alert(`✅ Agendamento com ${modalPro.nome} confirmado para ${dataFormatada} às ${horaVisitaModal}! Redirecionando para suas consultas...`);
+      setModalPro(null);
+      navigate('/consultas');
+    } catch (err) {
+      console.error('Erro ao agendar visita domiciliar:', err);
+      const msg = err.message || '';
+      if (msg.includes('RN01') || msg.includes('endereço') || msg.includes('endereco')) {
+        alert('Atenção: É obrigatório cadastrar seu endereço residencial no seu perfil antes de agendar uma visita domiciliar. Redirecionando para o Perfil...');
+        navigate('/perfil');
+      } else {
+        alert(`Erro ao confirmar agendamento: ${msg}`);
+      }
+    } finally {
+      setAgendandoModal(false);
     }
   };
 
@@ -349,7 +392,7 @@ export default function Home() {
           {destaque && (
             <section className="featured-section">
               <div className="featured-card">
-                <div className="featured-img-container">
+                <div className="featured-img-container" onClick={() => setModalPro(destaque)} style={{ cursor: 'pointer' }} title="Clique para ver detalhes e agendar">
                   <img 
                     src={destaque.foto_url || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600&h=700"} 
                     alt={destaque.nome} 
@@ -370,7 +413,7 @@ export default function Home() {
                     </span>
                   </div>
 
-                  <h2>{destaque.nome}</h2>
+                  <h2 onClick={() => setModalPro(destaque)} style={{ cursor: 'pointer' }}>{destaque.nome}</h2>
                   <h3>{destaque.especialidade_principal}</h3>
                   <p>{destaque.bio || 'Especialista com vasta experiência em reabilitação domiciliar, pós-operatório e suporte clínico humanizado.'}</p>
                   
@@ -384,11 +427,11 @@ export default function Home() {
                     </div>
 
                     <div className="featured-actions">
-                      <button className="btn-primary-white" onClick={() => handleIniciarChat(destaque.id)}>
+                      <button className="btn-primary-white" onClick={(e) => { e.stopPropagation(); handleIniciarChat(destaque.id); }}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         Conversar Agora
                       </button>
-                      <button className="btn-glass" onClick={() => handleIniciarChat(destaque.id)}>
+                      <button className="btn-glass" onClick={(e) => { e.stopPropagation(); setModalPro(destaque); }}>
                         Solicitar Visita
                       </button>
                     </div>
@@ -431,7 +474,12 @@ export default function Home() {
             ) : (
               <div className="cards-grid">
                 {profissionais.map(pro => (
-                  <div className="pro-card" key={pro.id}>
+                  <div 
+                    className="pro-card" 
+                    key={pro.id} 
+                    onClick={() => setModalPro(pro)}
+                    title="Clique para ver perfil completo e agendar"
+                  >
                     <div className="card-img-wrapper">
                       <img 
                         src={
@@ -471,7 +519,7 @@ export default function Home() {
                             <small>/{pro.unidade_cobranca || 'h'}</small>
                           </div>
                         </div>
-                        <button className="btn-card-action" onClick={() => handleIniciarChat(pro.id)}>
+                        <button className="btn-card-action" onClick={(e) => { e.stopPropagation(); handleIniciarChat(pro.id); }}>
                           <span>Mensagem</span>
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         </button>
@@ -483,6 +531,125 @@ export default function Home() {
             )}
           </section>
         </>
+      )}
+
+      {/* MODAL DETALHES DO ESPECIALISTA & AGENDAMENTO DOMICILIAR */}
+      {modalPro && (
+        <div className="modal-pro-backdrop" onClick={() => setModalPro(null)}>
+          <div className="modal-pro-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-pro-header">
+              <h3>Detalhes do Especialista</h3>
+              <button className="btn-modal-pro-close" onClick={() => setModalPro(null)}>✕</button>
+            </div>
+
+            <div className="modal-pro-body">
+              <div className="modal-pro-profile-summary">
+                <img 
+                  src={
+                    modalPro.foto_url || (
+                      modalPro.especialidade_principal?.includes('Enferm') 
+                        ? 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=200&h=200'
+                        : modalPro.especialidade_principal?.includes('Cuidador')
+                        ? 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=200&h=200'
+                        : modalPro.especialidade_principal?.includes('Médic') || modalPro.especialidade_principal?.includes('Clínic')
+                        ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=200&h=200'
+                        : 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200&h=200'
+                    )
+                  } 
+                  alt={modalPro.nome} 
+                  className="modal-pro-avatar"
+                />
+                <div className="modal-pro-info">
+                  <h4>{modalPro.nome}</h4>
+                  <div className="modal-pro-badges">
+                    <span className="modal-pro-specialty">{modalPro.especialidade_principal}</span>
+                    <span className="modal-pro-verified">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                      {modalPro.registro_conselho ? `${modalPro.conselho_tipo || 'Conselho'} ${modalPro.registro_conselho}` : 'Conselho Verificado'}
+                    </span>
+                    <span className="modal-pro-rating">⭐ {parseFloat(modalPro.nota_media || 5.0).toFixed(1)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-pro-bio-box">
+                <p>
+                  {modalPro.bio || 'Profissional da saúde credenciado com foco em atendimento domiciliar humanizado, excelência técnica e suporte clínico acolhedor.'}
+                </p>
+              </div>
+
+              <div className="modal-pro-schedule-card">
+                <div className="schedule-card-header">
+                  <h5>Agendar Atendimento Domiciliar</h5>
+                  <div className="schedule-card-price">
+                    R$ {parseFloat(modalPro.preco_base || 180).toFixed(2).replace('.', ',')}
+                    <small style={{ fontSize: '12px', fontWeight: 'normal', color: '#64748b' }}>/{modalPro.unidade_cobranca || 'sessão'}</small>
+                  </div>
+                </div>
+
+                <div className="modal-schedule-inputs">
+                  <div>
+                    <label>Data Desejada:</label>
+                    <input 
+                      type="date" 
+                      value={dataVisitaModal}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setDataVisitaModal(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label>Horário:</label>
+                    <input 
+                      type="time" 
+                      value={horaVisitaModal}
+                      onChange={(e) => setHoraVisitaModal(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-time-chips">
+                  {['09:00', '14:00', '17:00'].map(h => (
+                    <button
+                      key={h}
+                      type="button"
+                      className={horaVisitaModal === h ? 'modal-time-chip active' : 'modal-time-chip'}
+                      onClick={() => setHoraVisitaModal(h)}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="modal-address-reminder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span>Atendimento na sua residência cadastrada no perfil (RN01)</span>
+                </div>
+              </div>
+
+              <div className="modal-pro-actions">
+                <button 
+                  className="btn-modal-confirm-booking" 
+                  onClick={handleConfirmarAgendamentoModal}
+                  disabled={agendandoModal}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  {agendandoModal ? 'Confirmando...' : 'Confirmar Agendamento'}
+                </button>
+                <button 
+                  className="btn-modal-open-chat"
+                  onClick={() => {
+                    const id = modalPro.id;
+                    setModalPro(null);
+                    handleIniciarChat(id);
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Conversar no Chat
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* FOOTER */}
@@ -498,4 +665,4 @@ export default function Home() {
       </footer>
     </div>
   );
-}
+}

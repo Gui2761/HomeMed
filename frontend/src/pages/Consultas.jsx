@@ -157,13 +157,30 @@ export default function Consultas() {
 
               <div className="visit-card-body">
                 <img 
-                  src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200&h=200" 
-                  alt={proximaVisita.profissional_nome} 
+                  src={
+                    tipo === 'profissional'
+                      ? (proximaVisita.paciente_foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200")
+                      : (proximaVisita.profissional_foto || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200&h=200")
+                  } 
+                  alt={tipo === 'profissional' ? proximaVisita.paciente_nome : proximaVisita.profissional_nome} 
                   className="visit-doc-avatar"
                 />
                 <div className="visit-doc-details">
-                  <div className="doc-specialty-badge">{proximaVisita.especialidade_principal}</div>
-                  <h3>{proximaVisita.profissional_nome}</h3>
+                  <div className="doc-specialty-badge">
+                    {tipo === 'profissional' ? 'Paciente Domiciliar' : proximaVisita.especialidade_principal}
+                  </div>
+                  <h3>
+                    {tipo === 'profissional' 
+                      ? proximaVisita.paciente_nome 
+                      : tipo === 'admin' 
+                      ? `${proximaVisita.profissional_nome} ➔ ${proximaVisita.paciente_nome}` 
+                      : proximaVisita.profissional_nome}
+                  </h3>
+                  {tipo === 'profissional' && proximaVisita.paciente_telefone && (
+                    <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>📞 Telefone:</span> <strong>{proximaVisita.paciente_telefone}</strong>
+                    </div>
+                  )}
                   <div className="visit-location-info">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                     <span>
@@ -182,9 +199,9 @@ export default function Consultas() {
                 <div className="action-buttons-group">
                   <button className="btn-chat-primary" onClick={() => navigate('/mensagens')}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    Falar com Especialista
+                    {tipo === 'profissional' ? 'Falar com o Paciente' : 'Falar com Especialista'}
                   </button>
-                  <button className="btn-secondary-outline" onClick={() => navigate('/consultas/detalhes')}>
+                  <button className="btn-secondary-outline" onClick={() => navigate('/consultas/detalhes', { state: { visita: proximaVisita } })}>
                     Ver Prontuário & Recibo
                   </button>
                 </div>
@@ -210,56 +227,78 @@ export default function Consultas() {
               </button>
             </div>
           ) : (
-            outrasVisitas.map(visita => (
-              <div className="consultas-card history-card" key={visita.id}>
-                <div className="history-left">
-                  <img 
-                    src={
-                      visita.especialidade_principal?.includes('Cuidador')
-                        ? 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=120&h=120'
-                        : visita.especialidade_principal?.includes('Médic') || visita.especialidade_principal?.includes('Clínic')
-                        ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=120&h=120'
-                        : 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=120&h=120'
-                    } 
-                    alt={visita.profissional_nome} 
-                    className="history-avatar"
-                  />
-                  <div className="history-info">
-                    <div className="history-header-row">
-                      <h4>{visita.profissional_nome}</h4>
-                      <span className={`status-pill ${visita.status}`}>
-                        {visita.status === 'concluido' ? 'Concluída' : visita.status === 'cancelado' ? 'Cancelada' : 'Confirmado'}
-                      </span>
-                    </div>
-                    <div className="history-specialty">{visita.especialidade_principal}</div>
-                    <div className="history-meta">
-                      <span>📅 {new Date(visita.data_hora_visita).toLocaleDateString('pt-BR')} às {new Date(visita.data_hora_visita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      <span>💰 R$ {parseFloat(visita.valor_total).toFixed(2).replace('.', ',')}</span>
-                    </div>
+            outrasVisitas.map(visita => {
+              const avatarUrl = tipo === 'profissional'
+                ? (visita.paciente_foto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120&h=120')
+                : (visita.profissional_foto || (
+                    visita.especialidade_principal?.includes('Cuidador')
+                      ? 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=120&h=120'
+                      : visita.especialidade_principal?.includes('Médic') || visita.especialidade_principal?.includes('Clínic')
+                      ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=120&h=120'
+                      : 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=120&h=120'
+                  ));
 
-                    {visita.avaliacao_nota && (
-                      <div className="rated-box">
-                        ⭐ Nota {visita.avaliacao_nota}/5 {visita.avaliacao_comentario ? `— "${visita.avaliacao_comentario}"` : ''}
+              const titulo = tipo === 'profissional' 
+                ? visita.paciente_nome 
+                : tipo === 'admin' 
+                ? `${visita.profissional_nome} ➔ ${visita.paciente_nome}` 
+                : visita.profissional_nome;
+
+              const subtitulo = tipo === 'profissional'
+                ? (visita.paciente_telefone ? `Paciente • Tel: ${visita.paciente_telefone}` : 'Paciente Domiciliar')
+                : visita.especialidade_principal;
+
+              return (
+                <div className="consultas-card history-card" key={visita.id}>
+                  <div className="history-left">
+                    <img 
+                      src={avatarUrl} 
+                      alt={titulo} 
+                      className="history-avatar"
+                    />
+                    <div className="history-info">
+                      <div className="history-header-row">
+                        <h4>{titulo}</h4>
+                        <span className={`status-pill ${visita.status}`}>
+                          {visita.status === 'concluido' ? 'Concluída' : visita.status === 'cancelado' ? 'Cancelada' : 'Confirmado'}
+                        </span>
                       </div>
+                      <div className="history-specialty">{subtitulo}</div>
+                      <div className="history-meta">
+                        <span>📅 {new Date(visita.data_hora_visita).toLocaleDateString('pt-BR')} às {new Date(visita.data_hora_visita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>💰 R$ {parseFloat(visita.valor_total).toFixed(2).replace('.', ',')}</span>
+                        {visita.logradouro && <span>📍 {visita.logradouro}, {visita.numero} - {visita.bairro}</span>}
+                      </div>
+
+                      {visita.avaliacao_nota && (
+                        <div className="rated-box">
+                          ⭐ Nota {visita.avaliacao_nota}/5 {visita.avaliacao_comentario ? `— "${visita.avaliacao_comentario}"` : ''}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="history-actions-stack">
+                    {tipo === 'paciente' && visita.status === 'concluido' && !visita.avaliacao_id && (
+                      <button 
+                        className="btn-avaliar" 
+                        onClick={() => setModalAvaliacao({ agendamentoId: visita.id, proNome: visita.profissional_nome })}
+                      >
+                        ⭐ Avaliar Visita
+                      </button>
                     )}
+                    <button 
+                      className="btn-reagendar" 
+                      onClick={() => tipo === 'profissional' 
+                        ? navigate('/consultas/detalhes', { state: { visita } }) 
+                        : navigate('/home')}
+                    >
+                      {tipo === 'profissional' ? 'Ver Prontuário' : 'Reagendar'}
+                    </button>
                   </div>
                 </div>
-
-                <div className="history-actions-stack">
-                  {visita.status === 'concluido' && !visita.avaliacao_id && (
-                    <button 
-                      className="btn-avaliar" 
-                      onClick={() => setModalAvaliacao({ agendamentoId: visita.id, proNome: visita.profissional_nome })}
-                    >
-                      ⭐ Avaliar Visita
-                    </button>
-                  )}
-                  <button className="btn-reagendar" onClick={() => navigate('/home')}>
-                    Reagendar
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 

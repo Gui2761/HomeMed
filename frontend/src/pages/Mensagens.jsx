@@ -15,6 +15,11 @@ export default function Mensagens() {
   const [confirmando, setConfirmando] = useState(false);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
 
+  // Estados de data e hora para agendamento domiciliar
+  const amanhaIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const [dataVisita, setDataVisita] = useState(amanhaIso);
+  const [horaVisita, setHoraVisita] = useState('14:00');
+
   useEffect(() => {
     const rawUser = localStorage.getItem('@HomeMed:usuario');
     if (rawUser) {
@@ -86,18 +91,24 @@ export default function Mensagens() {
     if (!conversaAtiva || confirmando) return;
     setConfirmando(true);
     try {
+      const dataHoraIso = `${dataVisita}T${horaVisita}:00`;
       await api.criarAgendamento({
         profissional_id: conversaAtiva.profissional_id,
-        valor_total: conversaAtiva.preco_base || 180.00
+        valor_total: conversaAtiva.preco_base || 180.00,
+        data_hora_visita: dataHoraIso
       });
+
+      // Formatação amigável para exibição
+      const [ano, mes, dia] = dataVisita.split('-');
+      const dataFormatada = `${dia}/${mes}/${ano}`;
 
       // Envia mensagem no chat informando confirmação
       await api.enviarMensagem(conversaAtiva.id, {
-        conteudo: '✅ Agendamento de visita domiciliar confirmado com sucesso pelo paciente!',
+        conteudo: `✅ Agendamento de visita domiciliar confirmado com sucesso para o dia ${dataFormatada} às ${horaVisita}!`,
         tipo_mensagem: 'texto'
       });
 
-      alert('Agendamento confirmado com sucesso! Redirecionando para suas consultas...');
+      alert(`Agendamento confirmado com sucesso para ${dataFormatada} às ${horaVisita}! Redirecionando para suas consultas...`);
       navigate('/consultas');
     } catch (err) {
       console.error('Erro ao confirmar agendamento:', err);
@@ -256,9 +267,54 @@ export default function Mensagens() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                 <span>Residência do Paciente</span>
               </div>
-              <div className="service-info-item">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span>Horário a combinar</span>
+              <div className="service-booking-schedule" style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#047857', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                  📅 Data e Horário da Visita
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>Data:</label>
+                    <input 
+                      type="date" 
+                      value={dataVisita}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setDataVisita(e.target.value)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>Horário:</label>
+                    <input 
+                      type="time" 
+                      value={horaVisita}
+                      onChange={(e) => setHoraVisita(e.target.value)}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['09:00', '14:00', '17:00'].map(h => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => setHoraVisita(h)}
+                      style={{
+                        flex: 1,
+                        padding: '4px 6px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        border: '1px solid',
+                        borderColor: horaVisita === h ? '#059669' : '#cbd5e1',
+                        background: horaVisita === h ? '#ecfdf5' : '#ffffff',
+                        color: horaVisita === h ? '#065f46' : '#64748b',
+                        cursor: 'pointer',
+                        fontWeight: horaVisita === h ? '700' : '500'
+                      }}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

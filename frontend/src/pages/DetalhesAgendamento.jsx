@@ -1,14 +1,35 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import './DetalhesAgendamento.css';
 
 export default function DetalhesAgendamento() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const visita = location.state?.visita;
+
   const [copiado, setCopiado] = useState(false);
 
+  const rawUser = localStorage.getItem('@HomeMed:usuario');
+  let usuario = null;
+  try { if (rawUser) usuario = JSON.parse(rawUser); } catch (e) {}
+  const tipo = usuario?.tipo_usuario || 'paciente';
+
+  const agendamentoId = visita?.id ? `HM-${visita.id.slice(0, 5).toUpperCase()}` : 'HM-88219';
+  const proNome = visita?.profissional_nome || 'Dra. Juliana Silva';
+  const pacNome = visita?.paciente_nome || 'Paciente Cadastrado';
+  const especialidade = visita?.especialidade_principal || 'Fisioterapia Respiratória e Motora';
+  const fotoPro = visita?.profissional_foto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150&h=150';
+  const dataFormatada = visita?.data_hora_visita 
+    ? `${new Date(visita.data_hora_visita).toLocaleDateString('pt-BR')} às ${new Date(visita.data_hora_visita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    : 'Hoje, 14:00 - 15:00';
+  const valorTotal = visita?.valor_total ? parseFloat(visita.valor_total).toFixed(2).replace('.', ',') : '180,00';
+  const enderecoLinha1 = visita?.logradouro ? `${visita.logradouro}, ${visita.numero}${visita.complemento ? ' - ' + visita.complemento : ''}` : 'Rua das Flores, 123 - Apto 14';
+  const enderecoLinha2 = visita?.bairro ? `${visita.bairro} — ${visita.cidade || 'São Paulo'}, ${visita.uf || 'SP'}` : 'Jardim Paulista — São Paulo, SP';
+  const cepTexto = visita?.cep ? `CEP: ${visita.cep}` : 'CEP: 01401-000';
+
   const handleCopiarRecibo = () => {
-    navigator.clipboard?.writeText('HM-88219-RECIBO-FISCAL-2026');
+    navigator.clipboard?.writeText(`${agendamentoId}-RECIBO-FISCAL-2026`);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2500);
   };
@@ -23,7 +44,7 @@ export default function DetalhesAgendamento() {
         <div className="breadcrumb-line">
           <Link to="/consultas">Consultas</Link>
           <span>/</span>
-          <span>Agendamento #HM-88219</span>
+          <span>Agendamento #{agendamentoId}</span>
         </div>
         
         <div className="detalhes-header-row">
@@ -31,7 +52,7 @@ export default function DetalhesAgendamento() {
             <h1>Detalhes do Agendamento</h1>
             <span className="badge-status-green">
               <span className="dot-green"></span>
-              Visita Concluída
+              {visita?.status === 'concluido' ? 'Visita Concluída' : visita?.status === 'cancelado' ? 'Visita Cancelada' : 'Visita Confirmada'}
             </span>
             <span className="badge-status-neutral">RN01 e Prontuário Domiciliar</span>
           </div>
@@ -55,22 +76,22 @@ export default function DetalhesAgendamento() {
           <div className="card-pro-banner">
             <div className="pro-banner-left">
               <img 
-                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150&h=150" 
-                alt="Dra. Juliana Silva" 
+                src={fotoPro} 
+                alt={proNome} 
                 className="pro-banner-avatar"
               />
               <div>
                 <div className="pro-name-row">
-                  <h3>Dra. Juliana Silva</h3>
+                  <h3>{proNome}</h3>
                   <span className="verified-chip-green">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                    CREFITO Ativo
+                    Conselho Ativo
                   </span>
                 </div>
-                <p className="pro-banner-subtitle">Fisioterapia Respiratória e Motora • Registro: CREFITO 12458-SP</p>
+                <p className="pro-banner-subtitle">{especialidade} • Paciente: {pacNome}</p>
                 <div className="pro-banner-badges">
                   <span>📍 Atendimento em Domicílio</span>
-                  <span>⭐ 5.0 (42 avaliações)</span>
+                  <span>⭐ {visita?.nota_media || '5.0'} (Avaliado)</span>
                 </div>
               </div>
             </div>
@@ -92,18 +113,18 @@ export default function DetalhesAgendamento() {
             <div className="procedure-stats-grid">
               <div className="proc-stat-col">
                 <span className="proc-label">Serviço Solicitado</span>
-                <strong>Fisioterapia Motora & Reabilitação</strong>
-                <small>Atendimento Domiciliar 60 min</small>
+                <strong>{especialidade}</strong>
+                <small>Atendimento Domiciliar</small>
               </div>
               <div className="proc-stat-col">
                 <span className="proc-label">Data & Hora da Visita</span>
-                <strong>Hoje, 14:00 - 15:00</strong>
-                <small>Chegada confirmada às 14:02</small>
+                <strong>{dataFormatada}</strong>
+                <small>Horário Agendado</small>
               </div>
               <div className="proc-stat-col">
-                <span className="proc-label">Duração da Visita</span>
-                <strong>Concluído em 1h 04</strong>
-                <small>Encerramento às 15:06</small>
+                <span className="proc-label">Duração Prevista</span>
+                <strong>60 minutos</strong>
+                <small>Sessão presencial</small>
               </div>
             </div>
 
@@ -139,9 +160,9 @@ export default function DetalhesAgendamento() {
 
             <div className="address-display-box">
               <div className="address-info-text">
-                <strong>Rua das Flores, 123 - Apto 14</strong>
-                <p>Jardim Paulista — São Paulo, SP</p>
-                <small>CEP: 01401-000 • Ponto de Referência: Próximo ao Metrô Trianon-Masp</small>
+                <strong>{enderecoLinha1}</strong>
+                <p>{enderecoLinha2}</p>
+                <small>{cepTexto} • Atendimento Presencial Domiciliar</small>
                 
                 <div className="geo-check-row">
                   <span className="geo-icon">✓</span>
@@ -209,8 +230,8 @@ export default function DetalhesAgendamento() {
 
             <div className="escrow-breakdown-list">
               <div className="escrow-row">
-                <span>Sessão de Fisioterapia (1h)</span>
-                <strong>R$ 180,00</strong>
+                <span>Atendimento Domiciliar ({especialidade})</span>
+                <strong>R$ {valorTotal}</strong>
               </div>
               <div className="escrow-row">
                 <span>Taxa de deslocamento domiciliar</span>
@@ -223,7 +244,7 @@ export default function DetalhesAgendamento() {
 
               <div className="escrow-total-row">
                 <span>Total Liquidado</span>
-                <strong>R$ 180,00</strong>
+                <strong>R$ {valorTotal}</strong>
               </div>
             </div>
 
