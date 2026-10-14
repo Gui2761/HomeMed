@@ -147,7 +147,14 @@ export default function Mensagens() {
                   onClick={() => setConversaAtiva(conv)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <img src={conv.interlocutor_foto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=100&h=100'} alt={conv.interlocutor_nome} />
+                  <img 
+                    src={conv.interlocutor_foto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=100&h=100'} 
+                    alt={conv.interlocutor_nome} 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.interlocutor_nome || 'User')}&background=0284c7&color=fff&size=100&bold=true`;
+                    }}
+                  />
                   <div className="convo-info">
                     <div className="convo-header">
                       <h4>{conv.interlocutor_nome}</h4>
@@ -172,15 +179,24 @@ export default function Mensagens() {
             <>
               <div className="chat-header">
                 <div className="chat-user">
-                  <img src={conversaAtiva.interlocutor_foto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=100&h=100'} alt={conversaAtiva.interlocutor_nome} />
+                  <img 
+                    src={conversaAtiva.interlocutor_foto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=100&h=100'} 
+                    alt={conversaAtiva.interlocutor_nome} 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(conversaAtiva.interlocutor_nome || 'User')}&background=0284c7&color=fff&size=100&bold=true`;
+                    }}
+                  />
                   <div>
                     <h4>{conversaAtiva.interlocutor_nome}</h4>
                     <span>{conversaAtiva.interlocutor_especialidade}</span>
                   </div>
                 </div>
                 <div className="chat-header-actions">
-                  <button title="Chamada de Vídeo"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg></button>
-                  <button title="Chamada Telefônica"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#047857', background: '#ecfdf5', border: '1px solid #bbf7d0', padding: '5px 12px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                    Visita Domiciliar Presencial
+                  </span>
                 </div>
               </div>
 
@@ -251,6 +267,10 @@ export default function Mensagens() {
               <img 
                 src={conversaAtiva.interlocutor_foto || (usuarioAtual?.tipo_usuario === 'profissional' ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150&h=150' : 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=150&h=150')} 
                 alt={conversaAtiva.interlocutor_nome} 
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(conversaAtiva.interlocutor_nome || 'User')}&background=0284c7&color=fff&size=150&bold=true`;
+                }}
               />
               <h4>{conversaAtiva.interlocutor_nome}</h4>
               <span>{usuarioAtual?.tipo_usuario === 'profissional' ? 'Paciente Domiciliar' : (conversaAtiva.interlocutor_especialidade || 'Especialista em Saúde')}</span>
