@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import Navbar from '../components/Navbar';
+import { formatarCep, buscarEnderecoPorCep } from '../utils/formatters';
 import './Credenciamento.css';
 
 export default function Credenciamento() {
@@ -19,6 +20,9 @@ export default function Credenciamento() {
   const [disponivelHoje, setDisponivelHoje] = useState(false);
   const [raioKm, setRaioKm] = useState(20);
   const [cepBase, setCepBase] = useState('');
+  const [statusCepBase, setStatusCepBase] = useState('');
+  const [buscandoCepBase, setBuscandoCepBase] = useState(false);
+  const [enderecoBase, setEnderecoBase] = useState(null);
   const [chavePix, setChavePix] = useState('');
   const [bio, setBio] = useState('');
   const [habilidades, setHabilidades] = useState([]);
@@ -27,9 +31,10 @@ export default function Credenciamento() {
   const [enviado, setEnviado] = useState(false);
   const [protocoloGerado, setProtocoloGerado] = useState('');
 
-  // Nomes dos arquivos anexados pelo usuário
-  const [docCarteira, setDocCarteira] = useState('');
-  const [docDiploma, setDocDiploma] = useState('');
+  // Documentos anexados separadamente: Frente, Verso e Diploma
+  const [docCarteiraFrente, setDocCarteiraFrente] = useState(null);
+  const [docCarteiraVerso, setDocCarteiraVerso] = useState(null);
+  const [docDiploma, setDocDiploma] = useState(null);
 
   useEffect(() => {
     try {
@@ -60,6 +65,45 @@ export default function Credenciamento() {
         setBio(pro.bio || '');
         setDisponivelHoje(Boolean(pro.disponivel_hoje));
         setValidado(Boolean(pro.verificado));
+        if (pro.raio_km) setRaioKm(pro.raio_km);
+        if (pro.chave_pix) setChavePix(pro.chave_pix);
+
+        // Documentos Frente e Verso
+        if (pro.doc_carteira_frente) {
+          try {
+            setDocCarteiraFrente(JSON.parse(pro.doc_carteira_frente));
+          } catch {
+            setDocCarteiraFrente({ nome: pro.doc_carteira_frente });
+          }
+        }
+        if (pro.doc_carteira_verso) {
+          try {
+            setDocCarteiraVerso(JSON.parse(pro.doc_carteira_verso));
+          } catch {
+            setDocCarteiraVerso({ nome: pro.doc_carteira_verso });
+          }
+        }
+        if (pro.doc_diploma) {
+          try {
+            setDocDiploma(JSON.parse(pro.doc_diploma));
+          } catch {
+            setDocDiploma({ nome: pro.doc_diploma });
+          }
+        }
+
+        // Base de Saída e CEP
+        if (pro.cep_base) {
+          setCepBase(formatarCep(pro.cep_base));
+          if (pro.cidade_base) {
+            setEnderecoBase({
+              cidade: pro.cidade_base,
+              uf: pro.uf_base,
+              bairro: pro.bairro_base,
+              logradouro: pro.logradouro_base
+            });
+            setStatusCepBase(`✓ Base confirmada: ${pro.logradouro_base ? pro.logradouro_base + ', ' : ''}${pro.bairro_base ? pro.bairro_base + ' - ' : ''}${pro.cidade_base}/${pro.uf_base}`);
+          }
+        }
       }
     } catch (err) {
       console.warn('Profissional ainda sem registro salvo:', err);
@@ -85,6 +129,74 @@ export default function Credenciamento() {
     alert(`Registro ${conselho} ${registro} verificado com sucesso no barramento do Conselho Regional!`);
   };
 
+  const handleDocUpload = (tipo, file) => {
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Arquivo muito pesado. Escolha um documento com no máximo 8MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const docObj = {
+        nome: file.name,
+        tamanho: `${(file.size / 1024).toFixed(0)} KB`,
+        tipo: file.type,
+        data: e.target.result
+      };
+
+      if (tipo === 'frente') setDocCarteiraFrente(docObj);
+      else if (tipo === 'verso') setDocCarteiraVerso(docObj);
+      else if (tipo === 'diploma') setDocDiploma(docObj);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoverDoc = (tipo) => {
+    if (tipo === 'frente') setDocCarteiraFrente(null);
+    else if (tipo === 'verso') setDocCarteiraVerso(null);
+    else if (tipo === 'diploma') setDocDiploma(null);
+  };
+
+  const handleBuscarCepBase = async (valorCep) => {
+    const cepLimpo = String(valorCep || cepBase || '').replace(/\D/g, '');
+    if (cepLimpo.length !== 8) {
+      setStatusCepBase('⚠️ Digite um CEP com 8 dígitos para consultar os Correios.');
+      return;
+    }
+    setBuscandoCepBase(true);
+    setStatusCepBase('Consultando base oficial dos Correios...');
+    try {
+      const info = await buscarEnderecoPorCep(cepLimpo);
+      if (info && info.sucesso) {
+        setCepBase(info.cep);
+        setEnderecoBase({
+          cidade: info.cidade,
+          uf: info.uf,
+          bairro: info.bairro,
+          logradouro: info.logradouro
+        });
+        setStatusCepBase(`✓ Base localizada: ${info.logradouro ? info.logradouro + ', ' : ''}${info.bairro ? info.bairro + ' - ' : ''}${info.cidade}/${info.uf} (${info.fonte})`);
+      } else {
+        setStatusCepBase('⚠️ CEP não encontrado na base oficial dos Correios.');
+      }
+    } catch (err) {
+      setStatusCepBase('⚠️ Falha ao buscar CEP nos Correios.');
+    } finally {
+      setBuscandoCepBase(false);
+    }
+  };
+
+  const handleCepBaseChange = (e) => {
+    const formatado = formatarCep(e.target.value);
+    setCepBase(formatado);
+    setStatusCepBase('');
+    const limpo = formatado.replace(/\D/g, '');
+    if (limpo.length === 8) {
+      handleBuscarCepBase(limpo);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!termoAceito) {
@@ -108,7 +220,17 @@ export default function Credenciamento() {
         bio: bio,
         preco_base: valorNumerico,
         unidade_cobranca: unidadeCobranca,
-        disponivel_hoje: disponivelHoje
+        disponivel_hoje: disponivelHoje,
+        doc_carteira_frente: docCarteiraFrente ? JSON.stringify(docCarteiraFrente) : null,
+        doc_carteira_verso: docCarteiraVerso ? JSON.stringify(docCarteiraVerso) : null,
+        doc_diploma: docDiploma ? JSON.stringify(docDiploma) : null,
+        raio_km: parseInt(raioKm, 10) || 20,
+        cep_base: cepBase,
+        cidade_base: enderecoBase?.cidade || '',
+        uf_base: enderecoBase?.uf || '',
+        bairro_base: enderecoBase?.bairro || '',
+        logradouro_base: enderecoBase?.logradouro || '',
+        chave_pix: chavePix
       });
 
       if (resposta.error) {
@@ -318,47 +440,129 @@ export default function Credenciamento() {
                 />
               </div>
 
-              {/* DOCUMENTOS OFICIAIS */}
+              {/* DOCUMENTOS OFICIAIS: FRENTE, VERSO E DIPLOMA SEPARADOS */}
               <div className="docs-upload-group">
-                <label>Documentos Oficiais para Auditoria:</label>
+                <label>Documentos Oficiais para Auditoria (Frente e Verso separados):</label>
                 
-                <div className="docs-grid-2">
+                <div className="docs-grid-3">
+                  {/* CARTEIRA - FRENTE */}
                   <div className="doc-upload-item">
-                    <div className="doc-icon">📄</div>
-                    <div className="doc-meta">
-                      <strong>Carteira do Conselho (Frente/Verso)</strong>
-                      <small>{docCarteira || 'Nenhum arquivo selecionado'}</small>
-                    </div>
-                    <label style={{ cursor: 'pointer', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
-                      {docCarteira ? 'Alterar' : 'Anexar'}
-                      <input 
-                        type="file" 
-                        accept=".pdf,.png,.jpg,.jpeg" 
-                        style={{ display: 'none' }}
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) setDocCarteira(e.target.files[0].name);
-                        }}
+                    {docCarteiraFrente?.data && docCarteiraFrente.tipo?.startsWith('image/') ? (
+                      <img 
+                        src={docCarteiraFrente.data} 
+                        alt="Frente" 
+                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
                       />
-                    </label>
+                    ) : (
+                      <div className="doc-icon">🪪</div>
+                    )}
+                    <div className="doc-meta">
+                      <strong>Carteira do Conselho (Frente) *</strong>
+                      <small>{docCarteiraFrente?.nome || 'Aguardando foto da frente'}</small>
+                      {docCarteiraFrente && <span className="doc-status-ok">Frente Anexada</span>}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ cursor: 'pointer', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', textAlign: 'center' }}>
+                        {docCarteiraFrente ? 'Alterar' : 'Anexar Frente'}
+                        <input 
+                          type="file" 
+                          accept=".pdf,.png,.jpg,.jpeg,.webp" 
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) handleDocUpload('frente', e.target.files[0]);
+                          }}
+                        />
+                      </label>
+                      {docCarteiraFrente && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverDoc('frente')}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }}
+                        >
+                          ✕ Remover
+                        </button>
+                      )}
+                    </div>
                   </div>
 
+                  {/* CARTEIRA - VERSO */}
                   <div className="doc-upload-item">
-                    <div className="doc-icon">🎓</div>
+                    {docCarteiraVerso?.data && docCarteiraVerso.tipo?.startsWith('image/') ? (
+                      <img 
+                        src={docCarteiraVerso.data} 
+                        alt="Verso" 
+                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                      />
+                    ) : (
+                      <div className="doc-icon">🔄</div>
+                    )}
+                    <div className="doc-meta">
+                      <strong>Carteira do Conselho (Verso) *</strong>
+                      <small>{docCarteiraVerso?.nome || 'Aguardando foto do verso'}</small>
+                      {docCarteiraVerso && <span className="doc-status-ok">Verso Anexado</span>}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ cursor: 'pointer', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', textAlign: 'center' }}>
+                        {docCarteiraVerso ? 'Alterar' : 'Anexar Verso'}
+                        <input 
+                          type="file" 
+                          accept=".pdf,.png,.jpg,.jpeg,.webp" 
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) handleDocUpload('verso', e.target.files[0]);
+                          }}
+                        />
+                      </label>
+                      {docCarteiraVerso && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverDoc('verso')}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }}
+                        >
+                          ✕ Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* DIPLOMA E CERTIFICADOS */}
+                  <div className="doc-upload-item">
+                    {docDiploma?.data && docDiploma.tipo?.startsWith('image/') ? (
+                      <img 
+                        src={docDiploma.data} 
+                        alt="Diploma" 
+                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                      />
+                    ) : (
+                      <div className="doc-icon">🎓</div>
+                    )}
                     <div className="doc-meta">
                       <strong>Diploma e Certificados</strong>
-                      <small>{docDiploma || 'Nenhum arquivo selecionado'}</small>
+                      <small>{docDiploma?.nome || 'Nenhum arquivo selecionado'}</small>
+                      {docDiploma && <span className="doc-status-ok">Diploma Anexado</span>}
                     </div>
-                    <label style={{ cursor: 'pointer', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>
-                      {docDiploma ? 'Alterar' : 'Anexar'}
-                      <input 
-                        type="file" 
-                        accept=".pdf,.png,.jpg,.jpeg" 
-                        style={{ display: 'none' }}
-                        onChange={(e) => {
-                          if (e.target.files?.[0]) setDocDiploma(e.target.files[0].name);
-                        }}
-                      />
-                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ cursor: 'pointer', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', textAlign: 'center' }}>
+                        {docDiploma ? 'Alterar' : 'Anexar'}
+                        <input 
+                          type="file" 
+                          accept=".pdf,.png,.jpg,.jpeg,.webp" 
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) handleDocUpload('diploma', e.target.files[0]);
+                          }}
+                        />
+                      </label>
+                      {docDiploma && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverDoc('diploma')}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }}
+                        >
+                          ✕ Remover
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -437,15 +641,46 @@ export default function Credenciamento() {
                   className="custom-range"
                 />
                 <div className="geo-slider-footer">
-                  <div className="cep-input-inline">
-                    <label>CEP da sua base de saída:</label>
+                  <div className="cep-input-inline" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+                    <label style={{ fontWeight: '700', color: '#1e293b' }}>CEP da sua base de saída:</label>
                     <input 
                       type="text" 
+                      inputMode="numeric"
                       value={cepBase} 
-                      onChange={(e) => setCepBase(e.target.value)} 
+                      onChange={handleCepBaseChange} 
                       placeholder="00000-000"
+                      maxLength={9}
+                      style={{ width: '115px', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: '600', fontSize: '13px' }}
                     />
+                    <button 
+                      type="button" 
+                      className="btn-verify-active" 
+                      onClick={() => handleBuscarCepBase(cepBase)}
+                      disabled={buscandoCepBase}
+                      style={{ padding: '7px 12px', fontSize: '12px' }}
+                    >
+                      {buscandoCepBase ? 'Buscando...' : 'Puxar dos Correios'}
+                    </button>
                   </div>
+
+                  {statusCepBase && (
+                    <div style={{ 
+                      width: '100%', 
+                      marginTop: '10px', 
+                      padding: '8px 12px', 
+                      borderRadius: '8px', 
+                      fontSize: '12px', 
+                      fontWeight: '600',
+                      background: statusCepBase.startsWith('✓') ? '#f0fdf4' : statusCepBase.startsWith('⚠️') ? '#fef2f2' : '#f0f9ff',
+                      color: statusCepBase.startsWith('✓') ? '#166534' : statusCepBase.startsWith('⚠️') ? '#991b1b' : '#0369a1',
+                      border: `1px solid ${statusCepBase.startsWith('✓') ? '#bbf7d0' : statusCepBase.startsWith('⚠️') ? '#fecaca' : '#bae6fd'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span>{statusCepBase}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

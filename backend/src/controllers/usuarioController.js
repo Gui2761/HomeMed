@@ -28,6 +28,13 @@ export const usuarioController = {
         return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
       }
 
+      if (telefone) {
+        const digitos = String(telefone).replace(/\D/g, '');
+        if (/[a-zA-Z]/.test(telefone) || (digitos.length !== 10 && digitos.length !== 11)) {
+          return res.status(400).json({ error: 'Número de telefone/WhatsApp inválido. Digite apenas números com DDD (10 ou 11 dígitos).' });
+        }
+      }
+
       // Criptografando a senha com bcryptjs
       const saltRounds = 10;
       const senha_hash = await bcrypt.hash(senha, saltRounds);
@@ -191,6 +198,13 @@ export const usuarioController = {
     try {
       const usuarioId = req.usuarioId;
       const { nome, telefone, email, foto_url } = req.body;
+
+      if (telefone !== undefined && telefone !== null && telefone !== '') {
+        const digitos = String(telefone).replace(/\D/g, '');
+        if (/[a-zA-Z]/.test(telefone) || (digitos.length !== 10 && digitos.length !== 11)) {
+          return res.status(400).json({ error: 'Número de telefone/WhatsApp inválido. Digite apenas números com DDD (10 ou 11 dígitos).' });
+        }
+      }
 
       const atualizado = await usuarioService.atualizarUsuario(usuarioId, { nome, telefone, email, foto_url });
       if (!atualizado) {

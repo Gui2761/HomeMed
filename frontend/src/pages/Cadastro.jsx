@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { formatarTelefone, validarTelefone, formatarCep, buscarEnderecoPorCep } from '../utils/formatters';
 import './Cadastro.css';
 
 export default function Cadastro() {
@@ -67,15 +68,23 @@ export default function Cadastro() {
   }, [location.search]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    let value = e.target.value;
+    if (e.target.name === 'telefone') {
+      value = formatarTelefone(value);
+    }
+    setFormData({ ...formData, [e.target.name]: value });
     if (erro) setErro('');
   };
 
   const handlePacienteChange = (e) => {
     const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : value;
+    if (name === 'cep') {
+      finalValue = formatarCep(finalValue);
+    }
     setPacienteData({
       ...pacienteData,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: finalValue
     });
     if (erro) setErro('');
   };
@@ -89,26 +98,26 @@ export default function Cadastro() {
     if (erro) setErro('');
   };
 
-  // Busca automática de endereço por CEP (ViaCEP)
+  // Busca automática de endereço por CEP (Correios / ViaCEP)
   const handleBuscarCep = async (cepInput) => {
-    const cepLimpo = cepInput.replace(/\D/g, '');
+    const cepLimpo = String(cepInput || '').replace(/\D/g, '');
     if (cepLimpo.length !== 8) return;
 
     setBuscandoCep(true);
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-      const data = await res.json();
-      if (!data.erro) {
+      const info = await buscarEnderecoPorCep(cepLimpo);
+      if (info && info.sucesso) {
         setPacienteData((prev) => ({
           ...prev,
-          logradouro: data.logradouro || prev.logradouro,
-          bairro: data.bairro || prev.bairro,
-          cidade: data.localidade || prev.cidade,
-          uf: data.uf || prev.uf
+          cep: info.cep,
+          logradouro: info.logradouro || prev.logradouro,
+          bairro: info.bairro || prev.bairro,
+          cidade: info.cidade || prev.cidade,
+          uf: info.uf || prev.uf
         }));
       }
     } catch (err) {
-      console.warn('ViaCEP offline ou indisponível:', err);
+      console.warn('Erro ao consultar CEP:', err);
     } finally {
       setBuscandoCep(false);
     }
@@ -116,6 +125,11 @@ export default function Cadastro() {
 
   const handleCadastro = async (e) => {
     e.preventDefault();
+
+    if (formData.telefone && !validarTelefone(formData.telefone)) {
+      setErro('Por favor, informe um número de Telefone / WhatsApp válido com DDD (apenas números, 10 ou 11 dígitos). Letras não são permitidas.');
+      return;
+    }
 
     if (formData.senha !== formData.confirmarSenha) {
       setErro('As senhas digitadas não coincidem. Digite a mesma senha em ambos os campos.');
@@ -317,11 +331,13 @@ export default function Cadastro() {
                   <div className="input-box" style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0 12px', background: '#fff' }}>
                     <input 
                       type="tel" 
+                      inputMode="numeric"
                       name="telefone" 
                       value={formData.telefone} 
                       onChange={handleChange} 
                       placeholder="(11) 98765-4321" 
                       required 
+                      maxLength={15}
                       style={{ border: 'none', width: '100%', padding: '10px 0', fontSize: '14px', outline: 'none' }}
                     />
                   </div>

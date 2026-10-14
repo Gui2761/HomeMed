@@ -19,6 +19,12 @@ export const pacienteController = {
     try {
       const usuarioId = req.usuarioId;
       const { nome, telefone, email, foto_url } = req.body;
+      if (telefone !== undefined && telefone !== null && telefone !== '') {
+        const digitos = String(telefone).replace(/\D/g, '');
+        if (/[a-zA-Z]/.test(telefone) || (digitos.length !== 10 && digitos.length !== 11)) {
+          return res.status(400).json({ error: 'Número de telefone/WhatsApp inválido. Digite apenas números com DDD (10 ou 11 dígitos).' });
+        }
+      }
       const perfilAtualizado = await pacienteService.atualizarPerfil(usuarioId, { nome, telefone, email, foto_url });
       return res.status(200).json({
         message: 'Perfil atualizado com sucesso!',

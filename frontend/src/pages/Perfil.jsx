@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import Navbar from '../components/Navbar';
+import { formatarTelefone, validarTelefone, formatarCep, buscarEnderecoPorCep } from '../utils/formatters';
 import './Perfil.css';
 
 // Avatares predefinidos em alta resolução por perfil
@@ -39,6 +40,9 @@ export default function Perfil() {
   const [salvando, setSalvando] = useState(false);
   const [historico, setHistorico] = useState([]);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
+  const [erroTelefone, setErroTelefone] = useState('');
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [statusCep, setStatusCep] = useState('');
 
   // Foto de Perfil & Modal
   const [modalFotoAberta, setModalFotoAberta] = useState(false);
@@ -118,7 +122,7 @@ export default function Perfil() {
           setFormData({
             nome: dadosPro.nome || u?.nome || '',
             email: dadosPro.email || u?.email || '',
-            telefone: dadosPro.telefone || u?.telefone || '',
+            telefone: formatarTelefone(dadosPro.telefone || u?.telefone || ''),
             cpf: ''
           });
           setProData({
@@ -147,7 +151,7 @@ export default function Perfil() {
           setFormData({
             nome: dadosAdmin.nome || u?.nome || '',
             email: dadosAdmin.email || u?.email || '',
-            telefone: dadosAdmin.telefone || u?.telefone || '',
+            telefone: formatarTelefone(dadosAdmin.telefone || u?.telefone || ''),
             cpf: ''
           });
         }
@@ -169,7 +173,7 @@ export default function Perfil() {
           setFormData({
             nome: dadosPerfil.nome || u?.nome || '',
             email: dadosPerfil.email || u?.email || '',
-            telefone: dadosPerfil.telefone || u?.telefone || '',
+            telefone: formatarTelefone(dadosPerfil.telefone || u?.telefone || ''),
             cpf: dadosPerfil.cpf || ''
           });
 
@@ -266,11 +270,56 @@ export default function Perfil() {
     }
   };
 
+  const handleTelefoneChange = (e) => {
+    const formatado = formatarTelefone(e.target.value);
+    setFormData(prev => ({ ...prev, telefone: formatado }));
+    if (erroTelefone) setErroTelefone('');
+  };
+
+  const handleCepChange = async (e) => {
+    const formatado = formatarCep(e.target.value);
+    setEnderecoData(prev => ({ ...prev, cep: formatado }));
+    setStatusCep('');
+
+    const cepLimpo = formatado.replace(/\D/g, '');
+    if (cepLimpo.length === 8) {
+      setBuscandoCep(true);
+      setStatusCep('Consultando base dos Correios...');
+      try {
+        const info = await buscarEnderecoPorCep(cepLimpo);
+        if (info && info.sucesso) {
+          setEnderecoData(prev => ({
+            ...prev,
+            cep: info.cep,
+            logradouro: info.logradouro || prev.logradouro,
+            bairro: info.bairro || prev.bairro,
+            cidade: info.cidade || prev.cidade,
+            uf: info.uf || prev.uf
+          }));
+          setStatusCep(`✓ Localizado: ${info.logradouro ? info.logradouro + ', ' : ''}${info.bairro} (${info.cidade}/${info.uf})`);
+        } else {
+          setStatusCep('⚠️ CEP não encontrado na base oficial dos Correios.');
+        }
+      } catch (err) {
+        setStatusCep('⚠️ Falha ao buscar CEP nos Correios.');
+      } finally {
+        setBuscandoCep(false);
+      }
+    }
+  };
+
   const handleSalvarPerfil = async (e) => {
     e.preventDefault();
-    setSalvando(true);
     setMensagemSucesso('');
+    setErroTelefone('');
 
+    if (formData.telefone && !validarTelefone(formData.telefone)) {
+      setErroTelefone('Número de telefone inválido. Informe o DDD e o número completo (10 ou 11 dígitos, apenas números).');
+      alert('Número de telefone inválido!\nInforme o DDD e o número completo (10 ou 11 dígitos, ex: (11) 98765-4321). Letras não são permitidas.');
+      return;
+    }
+
+    setSalvando(true);
     const tipo = usuario?.tipo_usuario || 'paciente';
 
     try {
@@ -529,12 +578,20 @@ export default function Perfil() {
                     <div className="field-group">
                       <label>Telefone / WhatsApp</label>
                       <input 
-                        type="text" 
+                        type="tel" 
+                        inputMode="numeric"
                         value={formData.telefone} 
-                        onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                        onChange={handleTelefoneChange}
                         required
+                        maxLength={15}
                         placeholder="(11) 98765-4321"
+                        style={erroTelefone ? { borderColor: '#ef4444' } : {}}
                       />
+                      {erroTelefone && (
+                        <small style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', display: 'block', fontWeight: '600' }}>
+                          {erroTelefone}
+                        </small>
+                      )}
                     </div>
                   </div>
 
@@ -770,14 +827,31 @@ export default function Perfil() {
                       </div>
                     </div>
 
-                    <div className="field-group" style={{ maxWidth: '240px', marginTop: '14px' }}>
-                      <label>CEP</label>
-                      <input 
-                        type="text" 
-                        value={enderecoData.cep} 
-                        onChange={(e) => setEnderecoData({ ...enderecoData, cep: e.target.value })}
-                        placeholder="01310-100"
-                      />
+                    <div className="field-group" style={{ maxWidth: '320px', marginTop: '14px' }}>
+                      <label>
+                        CEP {buscandoCep && <span style={{ color: '#0284c7', fontSize: '11px', fontWeight: '600' }}>(Buscando nos Correios...)</span>}
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input 
+                          type="text" 
+                          inputMode="numeric"
+                          value={enderecoData.cep} 
+                          onChange={handleCepChange}
+                          placeholder="01310-100"
+                          maxLength={9}
+                        />
+                      </div>
+                      {statusCep && (
+                        <small style={{ 
+                          fontSize: '11px', 
+                          marginTop: '4px', 
+                          display: 'block',
+                          color: statusCep.startsWith('✓') ? '#16a34a' : statusCep.startsWith('⚠️') ? '#dc2626' : '#0284c7',
+                          fontWeight: '600'
+                        }}>
+                          {statusCep}
+                        </small>
+                      )}
                     </div>
                   </div>
                 )}

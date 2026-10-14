@@ -103,7 +103,17 @@ async function initPostgresSchema() {
         unidade_cobranca VARCHAR(50) DEFAULT 'hora',
         nota_media NUMERIC(3,2) DEFAULT 0.0,
         verificado BOOLEAN DEFAULT FALSE,
-        disponivel_hoje BOOLEAN DEFAULT FALSE
+        disponivel_hoje BOOLEAN DEFAULT FALSE,
+        doc_carteira_frente TEXT,
+        doc_carteira_verso TEXT,
+        doc_diploma TEXT,
+        raio_km INTEGER DEFAULT 20,
+        cep_base VARCHAR(20),
+        cidade_base VARCHAR(100),
+        uf_base VARCHAR(2),
+        bairro_base VARCHAR(100),
+        logradouro_base VARCHAR(255),
+        chave_pix VARCHAR(100)
       )`,
       `CREATE TABLE IF NOT EXISTS enderecos (
         id UUID PRIMARY KEY,
@@ -161,6 +171,27 @@ async function initPostgresSchema() {
       // Ignora caso coluna já exista ou permissão
     }
 
+    const colunasAdicionaisPg = [
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS doc_carteira_frente TEXT;',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS doc_carteira_verso TEXT;',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS doc_diploma TEXT;',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS raio_km INTEGER DEFAULT 20;',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS cep_base VARCHAR(20);',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS cidade_base VARCHAR(100);',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS uf_base VARCHAR(2);',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS bairro_base VARCHAR(100);',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS logradouro_base VARCHAR(255);',
+      'ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS chave_pix VARCHAR(100);'
+    ];
+
+    for (const ddlCol of colunasAdicionaisPg) {
+      try {
+        await poolInstance.query(ddlCol);
+      } catch (e) {
+        // Ignora caso coluna já exista
+      }
+    }
+
     console.log('[DB-PG] Schema do PostgreSQL verificado com sucesso.');
     dbInitialized = true;
   } catch (err) {
@@ -201,7 +232,17 @@ function initSqliteSchema() {
       unidade_cobranca TEXT DEFAULT 'hora',
       nota_media REAL DEFAULT 0.0,
       verificado INTEGER DEFAULT 0,
-      disponivel_hoje INTEGER DEFAULT 0
+      disponivel_hoje INTEGER DEFAULT 0,
+      doc_carteira_frente TEXT,
+      doc_carteira_verso TEXT,
+      doc_diploma TEXT,
+      raio_km INTEGER DEFAULT 20,
+      cep_base TEXT,
+      cidade_base TEXT,
+      uf_base TEXT,
+      bairro_base TEXT,
+      logradouro_base TEXT,
+      chave_pix TEXT
     );
 
     CREATE TABLE IF NOT EXISTS enderecos (
@@ -260,6 +301,27 @@ function initSqliteSchema() {
     // Coluna já existe
   }
 
+  const colunasSqlite = [
+    'ALTER TABLE profissionais ADD COLUMN doc_carteira_frente TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN doc_carteira_verso TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN doc_diploma TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN raio_km INTEGER DEFAULT 20;',
+    'ALTER TABLE profissionais ADD COLUMN cep_base TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN cidade_base TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN uf_base TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN bairro_base TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN logradouro_base TEXT;',
+    'ALTER TABLE profissionais ADD COLUMN chave_pix TEXT;'
+  ];
+
+  for (const ddlCol of colunasSqlite) {
+    try {
+      sqliteDb.exec(ddlCol);
+    } catch (e) {
+      // Ignora se coluna já existir
+    }
+  }
+
   console.log('[DB-SQLite] Schema local SQLite verificado com sucesso.');
 }
 
@@ -303,7 +365,7 @@ export async function query(sql, params = []) {
 
   const trimmed = sqliteSql.trim().toUpperCase();
 
-  if (trimmed.startsWith('SELECT')) {
+  if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA')) {
     const stmt = sqliteDb.prepare(sqliteSql);
     const rows = stmt.all(...reorderedParams);
     return { rows, rowCount: rows.length };

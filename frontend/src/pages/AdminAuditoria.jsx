@@ -353,6 +353,71 @@ export default function AdminAuditoria() {
                       {proSelecionado.bio || 'Sem apresentação cadastrada.'}
                     </div>
                   </div>
+
+                  {/* DOCUMENTOS OFICIAIS FRENTE / VERSO */}
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                    <small style={{ color: '#64748b', fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                      Documentos Oficiais Submetidos
+                    </small>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                      <div style={{ background: '#ffffff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontWeight: '700', color: '#0f172a', display: 'block' }}>🪪 Carteira (Frente)</span>
+                        {(() => {
+                          const d = proSelecionado.doc_carteira_frente ? (typeof proSelecionado.doc_carteira_frente === 'object' ? proSelecionado.doc_carteira_frente : (() => { try { return JSON.parse(proSelecionado.doc_carteira_frente); } catch { return { nome: proSelecionado.doc_carteira_frente }; } })()) : null;
+                          return d ? (
+                            <>
+                              <small style={{ color: '#059669', fontWeight: '600' }}>✓ {d.nome}</small>
+                              {d.data && d.data.startsWith('data:image') && (
+                                <img src={d.data} alt="Frente" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '4px', marginTop: '4px' }} />
+                              )}
+                            </>
+                          ) : (
+                            <small style={{ color: '#94a3b8' }}>Não anexado</small>
+                          );
+                        })()}
+                      </div>
+
+                      <div style={{ background: '#ffffff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontWeight: '700', color: '#0f172a', display: 'block' }}>🔄 Carteira (Verso)</span>
+                        {(() => {
+                          const d = proSelecionado.doc_carteira_verso ? (typeof proSelecionado.doc_carteira_verso === 'object' ? proSelecionado.doc_carteira_verso : (() => { try { return JSON.parse(proSelecionado.doc_carteira_verso); } catch { return { nome: proSelecionado.doc_carteira_verso }; } })()) : null;
+                          return d ? (
+                            <>
+                              <small style={{ color: '#059669', fontWeight: '600' }}>✓ {d.nome}</small>
+                              {d.data && d.data.startsWith('data:image') && (
+                                <img src={d.data} alt="Verso" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '4px', marginTop: '4px' }} />
+                              )}
+                            </>
+                          ) : (
+                            <small style={{ color: '#94a3b8' }}>Não anexado</small>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    <div style={{ background: '#ffffff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', marginTop: '8px', fontSize: '12px' }}>
+                      <span style={{ fontWeight: '700', color: '#0f172a', display: 'block' }}>🎓 Diploma / Certificados</span>
+                      {(() => {
+                        const d = proSelecionado.doc_diploma ? (typeof proSelecionado.doc_diploma === 'object' ? proSelecionado.doc_diploma : (() => { try { return JSON.parse(proSelecionado.doc_diploma); } catch { return { nome: proSelecionado.doc_diploma }; } })()) : null;
+                        return d ? (
+                          <>
+                            <small style={{ color: '#059669', fontWeight: '600' }}>✓ {d.nome}</small>
+                            {d.data && d.data.startsWith('data:image') && (
+                              <img src={d.data} alt="Diploma" style={{ width: '100%', height: '70px', objectFit: 'cover', borderRadius: '4px', marginTop: '4px' }} />
+                            )}
+                          </>
+                        ) : (
+                          <small style={{ color: '#94a3b8' }}>Não anexado</small>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {proSelecionado.cep_base && (
+                    <div style={{ marginTop: '10px', fontSize: '12px', background: '#f0fdf4', padding: '8px 10px', borderRadius: '6px', border: '1px solid #bbf7d0', color: '#166534' }}>
+                      <strong>📍 Base Geográfica:</strong> CEP {proSelecionado.cep_base} {proSelecionado.cidade_base ? `(${proSelecionado.cidade_base}/${proSelecionado.uf_base})` : ''} • Raio: {proSelecionado.raio_km || 20}km
+                    </div>
+                  )}
                 </div>
 
                 <div className="drawer-quick-actions">
