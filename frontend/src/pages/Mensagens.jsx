@@ -244,92 +244,167 @@ export default function Mensagens() {
           )}
         </div>
 
-        {/* COLUNA 3: Detalhes do Serviço & Confirmação (RF18) */}
+        {/* COLUNA 3: Detalhes do Serviço & Confirmação com Lógica de Papel */}
         {conversaAtiva && (
           <div className="chat-details">
             <div className="details-profile">
-              <img src={conversaAtiva.interlocutor_foto || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150&h=150'} alt={conversaAtiva.interlocutor_nome} />
+              <img 
+                src={conversaAtiva.interlocutor_foto || (usuarioAtual?.tipo_usuario === 'profissional' ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150&h=150' : 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=150&h=150')} 
+                alt={conversaAtiva.interlocutor_nome} 
+              />
               <h4>{conversaAtiva.interlocutor_nome}</h4>
-              <span>{conversaAtiva.interlocutor_especialidade}</span>
-              <div className="details-rating">⭐ {parseFloat(conversaAtiva.nota_media || 4.9).toFixed(1)} <small>(Especialista Verificado)</small></div>
+              <span>{usuarioAtual?.tipo_usuario === 'profissional' ? 'Paciente Domiciliar' : (conversaAtiva.interlocutor_especialidade || 'Especialista em Saúde')}</span>
+              {usuarioAtual?.tipo_usuario !== 'profissional' && (
+                <div className="details-rating">⭐ {parseFloat(conversaAtiva.nota_media || 5.0).toFixed(1)} <small>(Especialista Verificado)</small></div>
+              )}
             </div>
 
-            <div className="details-box">
-              <h5>Detalhes do Serviço</h5>
-              <div className="service-row">
-                <div>
-                  <strong>{conversaAtiva.interlocutor_especialidade}</strong>
-                  <p>Atendimento Domiciliar ({conversaAtiva.unidade_cobranca || 'sessão'})</p>
-                </div>
-                <span className="service-price">R$ {parseFloat(conversaAtiva.preco_base || 180).toFixed(0)}</span>
-              </div>
-              <div className="service-info-item">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span>Residência do Paciente</span>
-              </div>
-              <div className="service-booking-schedule" style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#047857', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                  📅 Data e Horário da Visita
-                </span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>Data:</label>
-                    <input 
-                      type="date" 
-                      value={dataVisita}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setDataVisita(e.target.value)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
-                    />
+            {usuarioAtual?.tipo_usuario === 'profissional' ? (
+              /* VISÃO DO MÉDICO: Informações do paciente e atalhos rápidos */
+              <>
+                <div className="details-box">
+                  <h5>Informações do Paciente</h5>
+                  <div className="service-info-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>{conversaAtiva.interlocutor_endereco || 'Residência do Paciente Cadastrada'}</span>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>Horário:</label>
-                    <input 
-                      type="time" 
-                      value={horaVisita}
-                      onChange={(e) => setHoraVisita(e.target.value)}
-                      style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {['09:00', '14:00', '17:00'].map(h => (
-                    <button
-                      key={h}
-                      type="button"
-                      onClick={() => setHoraVisita(h)}
-                      style={{
-                        flex: 1,
-                        padding: '4px 6px',
-                        fontSize: '11px',
-                        borderRadius: '4px',
-                        border: '1px solid',
-                        borderColor: horaVisita === h ? '#059669' : '#cbd5e1',
-                        background: horaVisita === h ? '#ecfdf5' : '#ffffff',
-                        color: horaVisita === h ? '#065f46' : '#64748b',
-                        cursor: 'pointer',
-                        fontWeight: horaVisita === h ? '700' : '500'
-                      }}
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+                  {conversaAtiva.interlocutor_telefone && (
+                    <div className="service-info-item">
+                      <span>📞 {conversaAtiva.interlocutor_telefone}</span>
+                    </div>
+                  )}
+                  {conversaAtiva.interlocutor_cpf && (
+                    <div className="service-info-item">
+                      <span>🪪 CPF: {conversaAtiva.interlocutor_cpf}</span>
+                    </div>
+                  )}
 
-            <div className="details-actions">
-              <button 
-                className="btn-confirm" 
-                onClick={handleConfirmarAgendamento}
-                disabled={confirmando}
-              >
-                {confirmando ? 'Confirmando...' : 'Confirmar Agendamento'}
-              </button>
-              <button className="btn-cancel" onClick={() => navigate('/home')}>
-                Voltar para Início
-              </button>
-            </div>
+                  <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                      Respostas Rápidas do Especialista:
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {[
+                        "Olá! Confirmo o atendimento domiciliar.",
+                        "Por favor, deixe exames e receitas anteriores à mão.",
+                        "Estou a caminho da sua residência."
+                      ].map((msgRapida, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setNovoTexto(msgRapida)}
+                          style={{
+                            padding: '6px 8px',
+                            fontSize: '11px',
+                            textAlign: 'left',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            background: '#f8fafc',
+                            color: '#334155',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          💬 "{msgRapida}"
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="details-actions">
+                  <button 
+                    className="btn-confirm" 
+                    style={{ background: '#059669', borderColor: '#059669' }}
+                    onClick={() => navigate('/consultas')}
+                  >
+                    📋 Minha Agenda & Prontuários
+                  </button>
+                  <button className="btn-cancel" onClick={() => navigate('/home')}>
+                    Voltar ao Início
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* VISÃO DO PACIENTE: Detalhes do serviço, agendamento e confirmação */
+              <>
+                <div className="details-box">
+                  <h5>Detalhes do Serviço</h5>
+                  <div className="service-row">
+                    <div>
+                      <strong>{conversaAtiva.interlocutor_especialidade || 'Consulta Médica'}</strong>
+                      <p>Atendimento Domiciliar ({conversaAtiva.unidade_cobranca || 'sessão'})</p>
+                    </div>
+                    <span className="service-price">R$ {parseFloat(conversaAtiva.preco_base || 180).toFixed(0)}</span>
+                  </div>
+                  <div className="service-info-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span>Residência do Paciente</span>
+                  </div>
+                  <div className="service-booking-schedule" style={{ marginTop: '12px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#047857', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                      📅 Data e Horário da Visita
+                    </span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>Data:</label>
+                        <input 
+                          type="date" 
+                          value={dataVisita}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setDataVisita(e.target.value)}
+                          style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>Horário:</label>
+                        <input 
+                          type="time" 
+                          value={horaVisita}
+                          onChange={(e) => setHoraVisita(e.target.value)}
+                          style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {['09:00', '14:00', '17:00'].map(h => (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => setHoraVisita(h)}
+                          style={{
+                            flex: 1,
+                            padding: '4px 6px',
+                            fontSize: '11px',
+                            borderRadius: '4px',
+                            border: '1px solid',
+                            borderColor: horaVisita === h ? '#059669' : '#cbd5e1',
+                            background: horaVisita === h ? '#ecfdf5' : '#ffffff',
+                            color: horaVisita === h ? '#065f46' : '#64748b',
+                            cursor: 'pointer',
+                            fontWeight: horaVisita === h ? '700' : '500'
+                          }}
+                        >
+                          {h}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="details-actions">
+                  <button 
+                    className="btn-confirm" 
+                    onClick={handleConfirmarAgendamento}
+                    disabled={confirmando}
+                  >
+                    {confirmando ? 'Confirmando...' : 'Confirmar Agendamento'}
+                  </button>
+                  <button className="btn-cancel" onClick={() => navigate('/home')}>
+                    Voltar para Início
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

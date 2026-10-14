@@ -140,6 +140,10 @@ export default function Home() {
       navigate('/login');
       return;
     }
+    if (usuario?.tipo_usuario === 'profissional') {
+      alert('Sua conta atual é de Profissional de Saúde. Para agendar consultas como paciente, utilize uma conta de paciente ou acesse a agenda para gerenciar seus atendimentos.');
+      return;
+    }
     setAgendandoModal(true);
     try {
       const dataHoraIso = `${dataVisitaModal}T${horaVisitaModal}:00`;

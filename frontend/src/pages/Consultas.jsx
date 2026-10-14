@@ -68,6 +68,8 @@ export default function Consultas() {
   const totalConcluidas = agendamentos.filter(a => a.status === 'concluido').length;
 
   const tipo = usuario?.tipo_usuario || 'paciente';
+  const isProfissional = tipo === 'profissional' || (usuario?.email && usuario.email.includes('medico'));
+  const isPaciente = !isProfissional && tipo !== 'admin';
 
   return (
     <div className="app-container">
@@ -158,25 +160,25 @@ export default function Consultas() {
               <div className="visit-card-body">
                 <img 
                   src={
-                    tipo === 'profissional'
-                      ? (proximaVisita.paciente_foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200")
-                      : (proximaVisita.profissional_foto || "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200&h=200")
+                    (isProfissional || (proximaVisita.profissional_usuario_id && usuario?.id === proximaVisita.profissional_usuario_id))
+                      ? (proximaVisita.paciente_foto || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200")
+                      : (proximaVisita.profissional_foto || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=200&h=200")
                   } 
-                  alt={tipo === 'profissional' ? proximaVisita.paciente_nome : proximaVisita.profissional_nome} 
+                  alt={isProfissional ? proximaVisita.paciente_nome : proximaVisita.profissional_nome} 
                   className="visit-doc-avatar"
                 />
                 <div className="visit-doc-details">
                   <div className="doc-specialty-badge">
-                    {tipo === 'profissional' ? 'Paciente Domiciliar' : proximaVisita.especialidade_principal}
+                    {isProfissional ? 'Paciente Domiciliar' : proximaVisita.especialidade_principal}
                   </div>
                   <h3>
-                    {tipo === 'profissional' 
+                    {isProfissional 
                       ? proximaVisita.paciente_nome 
                       : tipo === 'admin' 
                       ? `${proximaVisita.profissional_nome} ➔ ${proximaVisita.paciente_nome}` 
                       : proximaVisita.profissional_nome}
                   </h3>
-                  {tipo === 'profissional' && proximaVisita.paciente_telefone && (
+                  {isProfissional && proximaVisita.paciente_telefone && (
                     <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>📞 Telefone:</span> <strong>{proximaVisita.paciente_telefone}</strong>
                     </div>
@@ -199,10 +201,10 @@ export default function Consultas() {
                 <div className="action-buttons-group">
                   <button className="btn-chat-primary" onClick={() => navigate('/mensagens')}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    {tipo === 'profissional' ? 'Falar com o Paciente' : 'Falar com Especialista'}
+                    {isProfissional ? 'Falar com o Paciente' : 'Falar com Especialista'}
                   </button>
                   <button className="btn-secondary-outline" onClick={() => navigate('/consultas/detalhes', { state: { visita: proximaVisita } })}>
-                    Ver Prontuário & Recibo
+                    {isProfissional ? '📋 Ver Prontuário do Paciente' : '📄 Ver Prontuário & Recibo'}
                   </button>
                 </div>
               </div>
@@ -228,8 +230,10 @@ export default function Consultas() {
             </div>
           ) : (
             outrasVisitas.map(visita => {
-              const avatarUrl = tipo === 'profissional'
-                ? (visita.paciente_foto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120&h=120')
+              const visitIsPro = isProfissional || (visita.profissional_usuario_id && usuario?.id === visita.profissional_usuario_id);
+
+              const avatarUrl = visitIsPro
+                ? (visita.paciente_foto || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120&h=120')
                 : (visita.profissional_foto || (
                     visita.especialidade_principal?.includes('Cuidador')
                       ? 'https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&q=80&w=120&h=120'
@@ -238,18 +242,24 @@ export default function Consultas() {
                       : 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=120&h=120'
                   ));
 
-              const titulo = tipo === 'profissional' 
+              const titulo = visitIsPro 
                 ? visita.paciente_nome 
                 : tipo === 'admin' 
                 ? `${visita.profissional_nome} ➔ ${visita.paciente_nome}` 
                 : visita.profissional_nome;
 
-              const subtitulo = tipo === 'profissional'
+              const subtitulo = visitIsPro
                 ? (visita.paciente_telefone ? `Paciente • Tel: ${visita.paciente_telefone}` : 'Paciente Domiciliar')
                 : visita.especialidade_principal;
 
               return (
-                <div className="consultas-card history-card" key={visita.id}>
+                <div 
+                  className="consultas-card history-card" 
+                  key={visita.id}
+                  onClick={() => navigate('/consultas/detalhes', { state: { visita } })}
+                  style={{ cursor: 'pointer' }}
+                  title="Clique para ver o prontuário completo"
+                >
                   <div className="history-left">
                     <img 
                       src={avatarUrl} 
@@ -278,23 +288,43 @@ export default function Consultas() {
                     </div>
                   </div>
 
-                  <div className="history-actions-stack">
-                    {tipo === 'paciente' && visita.status === 'concluido' && !visita.avaliacao_id && (
+                  <div className="history-actions-stack" onClick={(e) => e.stopPropagation()}>
+                    {/* Botão Ver Prontuário para TODOS (Pacientes e Médicos) */}
+                    <button 
+                      className="btn-secondary-outline" 
+                      style={{ padding: '7px 12px', fontSize: '12px', borderRadius: '8px' }}
+                      onClick={() => navigate('/consultas/detalhes', { state: { visita } })}
+                    >
+                      {visitIsPro ? '📋 Ver Prontuário' : '📄 Ver Prontuário'}
+                    </button>
+
+                    {/* Botão Avaliar para Paciente */}
+                    {!visitIsPro && visita.status === 'concluido' && !visita.avaliacao_id && (
                       <button 
                         className="btn-avaliar" 
                         onClick={() => setModalAvaliacao({ agendamentoId: visita.id, proNome: visita.profissional_nome })}
                       >
-                        ⭐ Avaliar Visita
+                        ⭐ Avaliar
                       </button>
                     )}
-                    <button 
-                      className="btn-reagendar" 
-                      onClick={() => tipo === 'profissional' 
-                        ? navigate('/consultas/detalhes', { state: { visita } }) 
-                        : navigate('/home')}
-                    >
-                      {tipo === 'profissional' ? 'Ver Prontuário' : 'Reagendar'}
-                    </button>
+
+                    {/* Ação de Reagendar (apenas para paciente) ou Chat com Paciente (para médico) */}
+                    {!visitIsPro ? (
+                      <button 
+                        className="btn-reagendar" 
+                        onClick={() => navigate('/home')}
+                      >
+                        🔁 Reagendar
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn-chat-primary"
+                        style={{ padding: '7px 12px', fontSize: '12px', borderRadius: '8px' }}
+                        onClick={() => navigate('/mensagens')}
+                      >
+                        💬 Falar
+                      </button>
+                    )}
                   </div>
                 </div>
               );

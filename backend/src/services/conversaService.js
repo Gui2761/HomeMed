@@ -19,8 +19,11 @@ export const conversaService = {
           c.ultima_mensagem_em,
           uPac.id as interlocutor_usuario_id,
           uPac.nome as interlocutor_nome,
-          COALESCE(uPac.foto_url, pPac.foto_url, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150&h=150') as interlocutor_foto,
-          'Paciente' as interlocutor_especialidade,
+          uPac.telefone as interlocutor_telefone,
+          pPac.cpf as interlocutor_cpf,
+          (SELECT e.logradouro || ', ' || e.numero || ' - ' || e.bairro FROM enderecos e WHERE e.paciente_id = pPac.id LIMIT 1) as interlocutor_endereco,
+          COALESCE(uPac.foto_url, pPac.foto_url, 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150&h=150') as interlocutor_foto,
+          'Paciente Domiciliar' as interlocutor_especialidade,
           (SELECT conteudo FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem,
           (SELECT enviado_em FROM mensagens WHERE conversa_id = c.id ORDER BY enviado_em DESC LIMIT 1) as ultima_mensagem_data,
           (SELECT COUNT(*) FROM mensagens WHERE conversa_id = c.id AND remetente_id != $1 AND NOT lida) as nao_lidas
