@@ -22,6 +22,13 @@ export default function DetalhesAgendamento() {
   const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
   const [msgAvaliacaoSucesso, setMsgAvaliacaoSucesso] = useState('');
 
+  // Estados de Conclusão e Reagendamento de Visita
+  const [concluindo, setConcluindo] = useState(false);
+  const [modalReagendar, setModalReagendar] = useState(false);
+  const [novaData, setNovaData] = useState('');
+  const [novaHora, setNovaHora] = useState('');
+  const [reagendando, setReagendando] = useState(false);
+
   const TAGS_DISPONIVEIS = ['Pontual', 'Equipamento Próprio', 'Atendimento Humanizado', 'Conduta Segura', 'Recomendo'];
 
   const rawUser = localStorage.getItem('@HomeMed:usuario');
@@ -104,6 +111,51 @@ export default function DetalhesAgendamento() {
       alert(`Erro ao registrar avaliação: ${err.message || 'Verifique sua conexão.'}`);
     } finally {
       setEnviandoAvaliacao(false);
+    }
+  };
+
+  const handleConcluirVisita = async () => {
+    if (!visita?.id) return;
+    if (!window.confirm('Confirma a conclusão deste atendimento domiciliar? O status será alterado para Concluído e os honorários serão liberados.')) {
+      return;
+    }
+    setConcluindo(true);
+    try {
+      await api.atualizarStatusAgendamento(visita.id, 'concluido');
+      setVisita(prev => ({ ...prev, status: 'concluido' }));
+      alert('✅ Atendimento concluído com sucesso! Visita homologada.');
+    } catch (err) {
+      console.error('Erro ao concluir visita:', err);
+      alert(`Erro ao concluir atendimento: ${err.message || 'Tente novamente.'}`);
+    } finally {
+      setConcluindo(false);
+    }
+  };
+
+  const handleAbrirReagendar = () => {
+    if (visita?.data_hora_visita) {
+      const d = new Date(visita.data_hora_visita);
+      setNovaData(!isNaN(d) ? d.toISOString().split('T')[0] : '');
+      setNovaHora(!isNaN(d) ? d.toTimeString().slice(0, 5) : '14:00');
+    }
+    setModalReagendar(true);
+  };
+
+  const handleConfirmarReagendar = async (e) => {
+    e.preventDefault();
+    if (!visita?.id || !novaData || !novaHora) return;
+    setReagendando(true);
+    try {
+      const novaDataHoraIso = new Date(`${novaData}T${novaHora}:00`).toISOString();
+      await api.reagendarAgendamento(visita.id, novaDataHoraIso);
+      setVisita(prev => ({ ...prev, data_hora_visita: novaDataHoraIso, status: 'confirmado' }));
+      alert('✅ Atendimento domiciliar reagendado com sucesso!');
+      setModalReagendar(false);
+    } catch (err) {
+      console.error('Erro ao reagendar atendimento:', err);
+      alert(`Erro ao reagendar: ${err.message || 'Verifique a data e horário selecionados.'}`);
+    } finally {
+      setReagendando(false);
     }
   };
 
@@ -731,6 +783,46 @@ export default function DetalhesAgendamento() {
           <div className="side-card actions-card">
             <span className="actions-header-label">AÇÕES DO AGENDAMENTO</span>
             
+            {/* Ação do Médico: Concluir Atendimento Presencial */}
+            {isProfissional && visita?.status !== 'concluido' && (
+              <button 
+                className="btn-concluir-atendimento" 
+                onClick={handleConcluirVisita}
+                disabled={concluindo}
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  marginBottom: '10px'
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {concluindo ? 'Concluindo...' : '✅ Concluir Atendimento Realizado'}
+              </button>
+            )}
+
+            {/* Ação de Reagendamento (Médico ou Paciente antes da conclusão) */}
+            {visita?.status !== 'concluido' && visita?.status !== 'cancelado' && (
+              <button 
+                className="btn-reagendar" 
+                onClick={handleAbrirReagendar}
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  marginBottom: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                🔁 Reagendar Visita
+              </button>
+            )}
+
             {isPaciente ? (
               <button className="btn-agendar-novamente" onClick={() => navigate('/home')}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -756,6 +848,89 @@ export default function DetalhesAgendamento() {
         </div>
 
       </div>
+
+      {/* MODAL DE REAGENDAMENTO */}
+      {modalReagendar && (
+        <div className="modal-backdrop">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div className="modal-star-icon" style={{ background: '#e0f2fe', color: '#0284c7' }}>🔁</div>
+              <h3>Reagendar Atendimento Domiciliar</h3>
+              <p>Escolha uma nova data e horário para a visita com <strong>{isProfissional ? pacNome : proNome}</strong>.</p>
+            </div>
+
+            <form onSubmit={handleConfirmarReagendar} className="modal-form">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                <div className="input-group">
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                    Nova Data:
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={novaData}
+                    onChange={(e) => setNovaData(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                    Novo Horário:
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={novaHora}
+                    onChange={(e) => setNovaHora(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {visita?.data_hora_visita && (
+                <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '20px', fontSize: '13px', color: '#64748b' }}>
+                  📌 <strong>Horário anterior:</strong> {dataFormatada}.
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-modal-cancel"
+                  onClick={() => setModalReagendar(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-modal-submit"
+                  disabled={reagendando}
+                >
+                  {reagendando ? 'Reagendando...' : 'Confirmar Reagendamento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className="footer-main">

@@ -187,6 +187,15 @@ export const api = {
     return response.json();
   },
 
+  async reagendarAgendamento(id, data_hora_visita) {
+    const response = await fetch(`${API_URL}/agendamentos/${id}/reagendar`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ data_hora_visita })
+    });
+    return response.json();
+  },
+
   // Avaliações
   async registrarAvaliacao(dados) {
     const response = await fetch(`${API_URL}/avaliacoes`, {

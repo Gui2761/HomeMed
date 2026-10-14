@@ -143,5 +143,13 @@ export const agendamentoService = {
 
     await pool.query('UPDATE agendamentos SET status = $1 WHERE id = $2', [status, id]);
     return { id, status };
+  },
+
+  async reagendar(id, data_hora_visita) {
+    if (!data_hora_visita) {
+      throw new Error('data_hora_visita é obrigatória para reagendamento.');
+    }
+    await pool.query('UPDATE agendamentos SET data_hora_visita = $1, status = $2 WHERE id = $3', [data_hora_visita, 'confirmado', id]);
+    return { id, data_hora_visita, status: 'confirmado' };
   }
 };

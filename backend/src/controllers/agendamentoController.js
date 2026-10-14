@@ -57,5 +57,25 @@ export const agendamentoController = {
       console.error(err);
       return res.status(400).json({ error: err.message || 'Erro ao atualizar status do agendamento.' });
     }
+  },
+
+  async reagendar(req, res) {
+    try {
+      const { id } = req.params;
+      const { data_hora_visita } = req.body;
+
+      if (!data_hora_visita) {
+        return res.status(400).json({ error: 'data_hora_visita é obrigatória.' });
+      }
+
+      const reagendado = await agendamentoService.reagendar(id, data_hora_visita);
+      return res.status(200).json({
+        message: 'Visita reagendada com sucesso!',
+        agendamento: reagendado
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json({ error: err.message || 'Erro ao reagendar visita.' });
+    }
   }
 };

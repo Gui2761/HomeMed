@@ -458,6 +458,35 @@
   color: #ffffff;
 }
 
+.btn-concluir-atendimento {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.btn-concluir-atendimento:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+}
+
+.btn-concluir-atendimento:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+
 /* SIDEBAR RIGHT */
 .consultas-sidebar-right {
   display: flex;
