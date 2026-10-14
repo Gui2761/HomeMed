@@ -887,7 +887,13 @@ export default function Perfil() {
                 ) : (
                   <div className="history-cards-list">
                     {historico.map(h => (
-                      <div key={h.id} className="history-item-box">
+                      <div 
+                        key={h.id} 
+                        className="history-item-box"
+                        onClick={() => navigate('/consultas/detalhes', { state: { visita: h } })}
+                        style={{ cursor: 'pointer' }}
+                        title="Clique para ver o prontuário completo"
+                      >
                         <div className="history-item-top">
                           <div>
                             <h4>{tipo === 'profissional' ? (h.paciente_nome || 'Paciente') : (h.profissional_nome || 'Profissional')}</h4>
@@ -899,6 +905,29 @@ export default function Perfil() {
                         <div className="history-item-meta">
                           <span>📅 {new Date(h.data_hora_visita).toLocaleDateString('pt-BR')} às {new Date(h.data_hora_visita).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                           <span>💰 R$ {parseFloat(h.valor_total || 0).toFixed(2).replace('.', ',')}</span>
+                        </div>
+
+                        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            className="btn-link-action"
+                            style={{ 
+                              fontSize: '12px', 
+                              padding: '6px 14px', 
+                              background: '#0284c7', 
+                              color: '#ffffff', 
+                              borderRadius: '6px', 
+                              border: 'none', 
+                              cursor: 'pointer',
+                              fontWeight: '700'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/consultas/detalhes', { state: { visita: h } });
+                            }}
+                          >
+                            {tipo === 'profissional' ? '📋 Ver Prontuário do Paciente' : '📄 Ver Prontuário & Recibo'}
+                          </button>
                         </div>
                       </div>
                     ))}

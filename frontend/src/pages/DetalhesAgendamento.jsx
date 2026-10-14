@@ -1,20 +1,111 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { api } from '../services/api';
 import Navbar from '../components/Navbar';
 import './DetalhesAgendamento.css';
 
 export default function DetalhesAgendamento() {
   const navigate = useNavigate();
   const location = useLocation();
-  const visita = location.state?.visita;
+  const [visita, setVisita] = useState(location.state?.visita || null);
+  const [carregandoVisita, setCarregandoVisita] = useState(!location.state?.visita);
 
   const [copiado, setCopiado] = useState(false);
   const [anotacaoMedico, setAnotacaoMedico] = useState('');
   const [salvoMsg, setSalvoMsg] = useState('');
 
+  // Estados de Avaliação Interativa
+  const [notaAvaliacao, setNotaAvaliacao] = useState(location.state?.visita?.avaliacao_nota || 5);
+  const [comentarioAvaliacao, setComentarioAvaliacao] = useState(location.state?.visita?.avaliacao_comentario || '');
+  const [tagsSelecionadas, setTagsSelecionadas] = useState(['Pontual', 'Atendimento Humanizado', 'Equipamento Próprio', 'Conduta Segura']);
+  const [editandoAvaliacao, setEditandoAvaliacao] = useState(!location.state?.visita?.avaliacao_nota);
+  const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
+  const [msgAvaliacaoSucesso, setMsgAvaliacaoSucesso] = useState('');
+
+  const TAGS_DISPONIVEIS = ['Pontual', 'Equipamento Próprio', 'Atendimento Humanizado', 'Conduta Segura', 'Recomendo'];
+
   const rawUser = localStorage.getItem('@HomeMed:usuario');
   let usuario = null;
   try { if (rawUser) usuario = JSON.parse(rawUser); } catch (e) {}
+
+  useEffect(() => {
+    if (!visita) {
+      (async () => {
+        try {
+          setCarregandoVisita(true);
+          const lista = await api.listarAgendamentos('todas');
+          if (Array.isArray(lista) && lista.length > 0) {
+            const v = lista[0];
+            setVisita(v);
+            if (v.avaliacao_nota) {
+              setNotaAvaliacao(v.avaliacao_nota);
+              setComentarioAvaliacao(v.avaliacao_comentario || '');
+              setEditandoAvaliacao(false);
+            } else {
+              setEditandoAvaliacao(true);
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao buscar visita:', err);
+        } finally {
+          setCarregandoVisita(false);
+        }
+      })();
+    } else if (visita.avaliacao_nota) {
+      setNotaAvaliacao(visita.avaliacao_nota);
+      setComentarioAvaliacao(visita.avaliacao_comentario || '');
+      setEditandoAvaliacao(false);
+    }
+  }, []);
+
+  const toggleTag = (tag) => {
+    if (tagsSelecionadas.includes(tag)) {
+      setTagsSelecionadas(tagsSelecionadas.filter(t => t !== tag));
+    } else {
+      setTagsSelecionadas([...tagsSelecionadas, tag]);
+    }
+  };
+
+  const handleSalvarAvaliacao = async (e) => {
+    e?.preventDefault();
+    const agendamentoIdReal = visita?.id;
+    if (!agendamentoIdReal) {
+      alert('Não foi possível identificar o código deste agendamento.');
+      return;
+    }
+
+    setEnviandoAvaliacao(true);
+    setMsgAvaliacaoSucesso('');
+
+    try {
+      const tagsFormatadas = tagsSelecionadas.length > 0 ? ` [Destaques: ${tagsSelecionadas.join(', ')}]` : '';
+      const textoFinal = comentarioAvaliacao.trim()
+        ? `${comentarioAvaliacao.trim()}${tagsFormatadas}`
+        : `Atendimento domiciliar excelente e pontual!${tagsFormatadas}`;
+
+      await api.registrarAvaliacao({
+        agendamento_id: agendamentoIdReal,
+        nota: notaAvaliacao,
+        comentario: textoFinal
+      });
+
+      setVisita(prev => ({
+        ...prev,
+        avaliacao_nota: notaAvaliacao,
+        avaliacao_comentario: textoFinal,
+        avaliacao_id: 'av-' + Date.now()
+      }));
+
+      setMsgAvaliacaoSucesso('✓ Sua avaliação foi registrada e publicada com sucesso!');
+      setEditandoAvaliacao(false);
+      setTimeout(() => setMsgAvaliacaoSucesso(''), 5000);
+    } catch (err) {
+      console.error('Erro ao registrar avaliação:', err);
+      alert(`Erro ao registrar avaliação: ${err.message || 'Verifique sua conexão.'}`);
+    } finally {
+      setEnviandoAvaliacao(false);
+    }
+  };
 
   // Identificação robusta do papel do usuário logado
   const isProfissional = usuario?.tipo_usuario === 'profissional' || 
@@ -282,7 +373,7 @@ export default function DetalhesAgendamento() {
             </div>
           </div>
 
-          {/* AVALIAÇÃO DO ATENDIMENTO */}
+          {/* AVALIAÇÃO DO ATENDIMENTO INTERATIVA */}
           <div className="card-section">
             <div className="section-title-line">
               <div className="section-heading-icon">⭐</div>
@@ -290,32 +381,244 @@ export default function DetalhesAgendamento() {
               <span className="protocol-code">Auditoria de Satisfação</span>
             </div>
 
-            <div className="rating-review-card">
-              <div className="rating-top-row">
-                <div className="stars-cluster">
-                  <span className="star-icon">⭐</span>
-                  <span className="star-icon">⭐</span>
-                  <span className="star-icon">⭐</span>
-                  <span className="star-icon">⭐</span>
-                  <span className="star-icon">⭐</span>
-                  <strong className="rating-number">{visita?.avaliacao_nota ? `${visita.avaliacao_nota}.0` : '5.0'} <small>/ 5.0</small></strong>
-                </div>
-                <span className="rating-privacy-tag">🔒 Depoimento Auditado & Homologado</span>
+            {msgAvaliacaoSucesso && (
+              <div style={{ background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>✓</span>
+                <span>{msgAvaliacaoSucesso}</span>
               </div>
+            )}
 
-              <div className="testimonial-text-box">
-                <p>
-                  "{visita?.avaliacao_comentario || 'Atendimento domiciliar excelente! Profissional pontual, atencioso e com total domínio técnico.'}"
-                </p>
-              </div>
+            {isProfissional ? (
+              /* VISÃO DO PROFISSIONAL: Exibe a avaliação do paciente */
+              <div className="rating-review-card">
+                {visita?.avaliacao_nota || visita?.avaliacao_comentario ? (
+                  <>
+                    <div className="rating-top-row">
+                      <div className="stars-cluster">
+                        {[1, 2, 3, 4, 5].map(st => (
+                          <span key={st} style={{ fontSize: '20px', color: (visita.avaliacao_nota || 5) >= st ? '#f59e0b' : '#cbd5e1' }}>★</span>
+                        ))}
+                        <strong className="rating-number">{visita.avaliacao_nota ? `${visita.avaliacao_nota}.0` : '5.0'} <small>/ 5.0</small></strong>
+                      </div>
+                      <span className="rating-privacy-tag">🔒 Depoimento de {pacNome}</span>
+                    </div>
 
-              <div className="rating-tags-flex">
-                <span className="rating-tag">✓ Pontual</span>
-                <span className="rating-tag">✓ Equipamento Próprio</span>
-                <span className="rating-tag">✓ Atendimento Humanizado</span>
-                <span className="rating-tag">✓ Conduta Segura</span>
+                    <div className="testimonial-text-box">
+                      <p>"{visita.avaliacao_comentario || 'Atendimento domiciliar excelente! Profissional pontual, atencioso e com total domínio técnico.'}"</p>
+                    </div>
+
+                    <div className="rating-tags-flex">
+                      <span className="rating-tag">✓ Pontual</span>
+                      <span className="rating-tag">✓ Equipamento Próprio</span>
+                      <span className="rating-tag">✓ Atendimento Humanizado</span>
+                      <span className="rating-tag">✓ Conduta Segura</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '24px 16px', color: '#64748b' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
+                    <strong style={{ display: 'block', fontSize: '15px', color: '#0f172a', marginBottom: '4px' }}>
+                      Aguardando Avaliação do Paciente
+                    </strong>
+                    <p style={{ fontSize: '13px', margin: 0 }}>
+                      O(A) paciente {pacNome} ainda não registrou a avaliação desta visita. Assim que for enviada, ela será vinculada ao seu perfil público.
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              /* VISÃO DO PACIENTE: Formulário de escrita e envio / Exibição com opção de editar */
+              <div className="rating-review-card" style={{ background: editandoAvaliacao ? '#ffffff' : '#f8fafc', border: editandoAvaliacao ? '2px solid #0284c7' : '1px solid #e2e8f0' }}>
+                {editandoAvaliacao ? (
+                  <form onSubmit={handleSalvarAvaliacao}>
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', display: 'block', marginBottom: '4px' }}>
+                        Como foi sua experiência com {proNome}?
+                      </label>
+                      <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 12px 0' }}>
+                        Clique nas estrelas abaixo para avaliar e escreva seu relato sincero sobre a visita domiciliar.
+                      </p>
+
+                      {/* Seletor de Estrelas Clicáveis */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setNotaAvaliacao(star)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '32px',
+                                padding: '0 2px',
+                                color: notaAvaliacao >= star ? '#f59e0b' : '#cbd5e1',
+                                transition: 'all 0.15s ease'
+                              }}
+                              title={`${star} estrelas`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                        <strong style={{ fontSize: '16px', color: '#0f172a' }}>
+                          {notaAvaliacao}.0 <small style={{ color: '#64748b', fontSize: '12px' }}>/ 5.0</small>
+                        </strong>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#0284c7', background: '#f0f9ff', padding: '3px 10px', borderRadius: '12px' }}>
+                          {notaAvaliacao === 5 ? '⭐ Excelente / Muito satisfeito' :
+                           notaAvaliacao === 4 ? '⭐ Muito bom' :
+                           notaAvaliacao === 3 ? '⭐ Atendimento Regular' :
+                           notaAvaliacao === 2 ? '⭐ Abaixo do esperado' : '⭐ Insatisfatório'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Destaques Rápidos / Chips Clicáveis */}
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        Selecione os pontos de destaque:
+                      </label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {TAGS_DISPONIVEIS.map(tag => {
+                          const ativa = tagsSelecionadas.includes(tag);
+                          return (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleTag(tag)}
+                              style={{
+                                background: ativa ? '#ecfdf5' : '#ffffff',
+                                border: `1px solid ${ativa ? '#10b981' : '#cbd5e1'}`,
+                                color: ativa ? '#047857' : '#64748b',
+                                fontWeight: '700',
+                                fontSize: '12px',
+                                padding: '6px 12px',
+                                borderRadius: '20px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {ativa ? `✓ ${tag}` : `+ ${tag}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Campo de Escrita / Textarea */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        Escreva seu depoimento sobre a visita:
+                      </label>
+                      <textarea
+                        value={comentarioAvaliacao}
+                        onChange={(e) => setComentarioAvaliacao(e.target.value)}
+                        placeholder="Ex: Profissional extremamente pontual, educado e capacitado. Explicou todo o procedimento com clareza e realizou o atendimento no conforto de casa..."
+                        rows={4}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                          lineHeight: '1.5',
+                          fontFamily: 'inherit',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    {/* Botões de Ação do Formulário */}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        type="submit"
+                        disabled={enviandoAvaliacao}
+                        style={{
+                          background: '#0284c7',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '12px 22px',
+                          borderRadius: '8px',
+                          fontWeight: '700',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)'
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        {enviandoAvaliacao ? 'Enviando...' : 'Publicar Minha Avaliação'}
+                      </button>
+
+                      {(visita?.avaliacao_nota || visita?.avaliacao_comentario) && (
+                        <button
+                          type="button"
+                          onClick={() => setEditandoAvaliacao(false)}
+                          style={{
+                            background: '#f1f5f9',
+                            color: '#475569',
+                            border: '1px solid #cbd5e1',
+                            padding: '12px 18px',
+                            borderRadius: '8px',
+                            fontWeight: '600',
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Cancelar Edição
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                ) : (
+                  /* MODO VISUALIZAÇÃO: Avaliação já salva pelo paciente */
+                  <>
+                    <div className="rating-top-row">
+                      <div className="stars-cluster">
+                        {[1, 2, 3, 4, 5].map(st => (
+                          <span key={st} style={{ fontSize: '20px', color: (visita?.avaliacao_nota || notaAvaliacao) >= st ? '#f59e0b' : '#cbd5e1' }}>★</span>
+                        ))}
+                        <strong className="rating-number">{visita?.avaliacao_nota || notaAvaliacao}.0 <small>/ 5.0</small></strong>
+                      </div>
+                      <span className="rating-privacy-tag">🔒 Sua Avaliação Registrada & Homologada</span>
+                    </div>
+
+                    <div className="testimonial-text-box">
+                      <p>"{visita?.avaliacao_comentario || comentarioAvaliacao || 'Atendimento domiciliar excelente! Profissional pontual, atencioso e com total domínio técnico.'}"</p>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                      <div className="rating-tags-flex">
+                        {tagsSelecionadas.map(tag => (
+                          <span key={tag} className="rating-tag">✓ {tag}</span>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditandoAvaliacao(true)}
+                        style={{
+                          background: '#f8fafc',
+                          color: '#0284c7',
+                          border: '1px solid #bae6fd',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✏️ Alterar Avaliação
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
         </div>
@@ -462,8 +765,8 @@ export default function DetalhesAgendamento() {
         </div>
         <div className="footer-links">
           <span>© 2026 HomeMed • Prontuário Eletrônico Unificado</span>
-          <a href="#">Política de Privacidade</a>
-          <a href="#">Termos de Atendimento</a>
+          <Link to="/termos">Política de Privacidade</Link>
+          <Link to="/termos">Termos de Atendimento</Link>
         </div>
       </footer>
     </div>

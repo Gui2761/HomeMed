@@ -418,8 +418,8 @@ export default function Mensagens() {
         </div>
         <div className="footer-links">
           <span>© 2026 HomeMed Saúde Digital</span>
-          <a href="#">Termos de Uso</a>
-          <a href="#">Privacidade</a>
+          <Link to="/termos">Termos de Uso</Link>
+          <Link to="/termos">Privacidade</Link>
         </div>
       </footer>
     </div>

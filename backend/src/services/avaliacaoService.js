@@ -12,12 +12,20 @@ export const avaliacaoService = {
       throw new Error('A nota deve ser entre 1 e 5 estrelas.');
     }
 
-    const id = crypto.randomUUID();
-    const sql = `
-      INSERT INTO avaliacoes (id, agendamento_id, nota, comentario)
-      VALUES ($1, $2, $3, $4)
-    `;
-    await pool.query(sql, [id, agendamento_id, notaInt, comentario || '']);
+    // Verifica se já existe avaliação para este agendamento (permite atualizar)
+    const checkExist = await pool.query('SELECT id FROM avaliacoes WHERE agendamento_id = $1', [agendamento_id]);
+    let id;
+    if (checkExist.rows.length > 0) {
+      id = checkExist.rows[0].id;
+      await pool.query('UPDATE avaliacoes SET nota = $1, comentario = $2 WHERE id = $3', [notaInt, comentario || '', id]);
+    } else {
+      id = crypto.randomUUID();
+      const sql = `
+        INSERT INTO avaliacoes (id, agendamento_id, nota, comentario)
+        VALUES ($1, $2, $3, $4)
+      `;
+      await pool.query(sql, [id, agendamento_id, notaInt, comentario || '']);
+    }
 
     // Recalcula nota média do profissional
     const resPro = await pool.query('SELECT profissional_id FROM agendamentos WHERE id = $1', [agendamento_id]);

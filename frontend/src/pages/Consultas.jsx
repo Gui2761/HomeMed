@@ -351,20 +351,23 @@ export default function Consultas() {
                 <span>Realizadas</span>
               </div>
               <div className="counter-item">
-                <strong>03</strong>
-                <span>Favoritos</span>
+                <strong>{isProfissional ? new Set(agendamentos.map(a => a.paciente_nome)).size.toString().padStart(2, '0') : agendamentos.filter(a => a.avaliacao_nota).length.toString().padStart(2, '0')}</strong>
+                <span>{isProfissional ? 'Pacientes' : 'Avaliadas'}</span>
               </div>
             </div>
 
             <div className="progress-box">
               <div className="progress-labels">
-                <span>Progresso do Tratamento</span>
-                <strong>75%</strong>
+                <span>{isProfissional ? 'Índice de Conclusão de Visitas' : 'Histórico de Atendimentos'}</span>
+                <strong>{agendamentos.length > 0 ? Math.round((totalConcluidas / agendamentos.length) * 100) : 100}%</strong>
               </div>
               <div className="progress-bar-track">
-                <div className="progress-bar-active" style={{ width: '75%' }}></div>
+                <div 
+                  className="progress-bar-active" 
+                  style={{ width: `${agendamentos.length > 0 ? Math.round((totalConcluidas / agendamentos.length) * 100) : 100}%` }}
+                ></div>
               </div>
-              <small>Todas as visitas ficam registradas no prontuário eletrônico unificado.</small>
+              <small>{isProfissional ? 'Atendimentos com prontuário clínico homologado perante o CFM.' : 'Todas as visitas contam com prontuário e recibo fiscal eletrônico.'}</small>
             </div>
           </div>
 
@@ -372,14 +375,24 @@ export default function Consultas() {
             <div className="tips-card-header">
               <span className="tips-icon">💡</span>
               <div>
-                <h4>Recomendações para a Visita</h4>
-                <p>Boas práticas para atendimento domiciliar</p>
+                <h4>{isProfissional ? 'Diretrizes do Atendimento Clínico' : 'Recomendações para a Visita'}</h4>
+                <p>{isProfissional ? 'Boas práticas e biossegurança domiciliar' : 'Orientações para o atendimento em domicílio'}</p>
               </div>
             </div>
             <ul className="tips-bullet-list">
-              <li>Mantenha documentos e receituários anteriores à mão.</li>
-              <li>Garanta boa iluminação e ventilação no quarto de atendimento.</li>
-              <li>Profissional equipado com paramentação descartável e EPIs.</li>
+              {isProfissional ? (
+                <>
+                  <li>Aferir sinais vitais e histórico clínico prévio do paciente.</li>
+                  <li>Registrar evolução no prontuário digital logo após a visita.</li>
+                  <li>Portar identificação do conselho e receituário timbrado regulatório.</li>
+                </>
+              ) : (
+                <>
+                  <li>Mantenha documentos e receituários anteriores à mão.</li>
+                  <li>Garanta boa iluminação e ventilação no quarto de atendimento.</li>
+                  <li>Profissional equipado com paramentação descartável e EPIs.</li>
+                </>
+              )}
             </ul>
           </div>
 
@@ -456,8 +469,8 @@ export default function Consultas() {
         </div>
         <div className="footer-links">
           <span>© 2026 HomeMed • Gestão de Atendimentos</span>
-          <a href="#">Termos</a>
-          <a href="#">Privacidade</a>
+          <Link to="/termos">Termos de Uso</Link>
+          <Link to="/termos">Política de Privacidade</Link>
         </div>
       </footer>
     </div>
